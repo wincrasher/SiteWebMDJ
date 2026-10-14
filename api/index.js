@@ -16,14 +16,23 @@ console.log('🔧 Startup - Checking environment...');
 console.log('POSTGRES_URL present:', !!process.env.POSTGRES_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
+// Parse connection string to handle SSL properly
+let pgConfig = {
   ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
-});
+};
+
+if (process.env.POSTGRES_URL) {
+  // Remove sslmode from URL and let our ssl config handle it
+  const urlWithoutSSL = process.env.POSTGRES_URL.replace(/[?&]sslmode=[^&]*/g, '').replace(/[?&]$/, '');
+  pgConfig.connectionString = urlWithoutSSL;
+  console.log('📝 Connection string parsed (SSL will be handled by config)');
+}
+
+// Database connection
+const pool = new Pool(pgConfig);
 
 pool.on('error', (err) => {
   console.error('❌ Unexpected pool error:', err.message);
