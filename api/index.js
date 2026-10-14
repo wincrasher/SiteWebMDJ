@@ -14,19 +14,26 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Database connection
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    require: true,
+    rejectUnauthorized: false
+  },
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
 });
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
+console.log('🔧 Database URL configured:', process.env.POSTGRES_URL ? 'YES (env var set)' : 'NO (env var missing)');
+
 // Initialize database schema
 async function initDatabase() {
   try {
     console.log('🔌 Attempting database connection...');
     const client = await pool.connect();
-    console.log('✅ Database connected');
+    console.log('✅ Database connected successfully');
     client.release();
     
     await pool.query(`
@@ -46,7 +53,11 @@ async function initDatabase() {
     `);
     console.log('✅ Database schema initialized');
   } catch (err) {
-    console.error('❌ Database initialization error:', err.message);
+    console.error('❌ Database error:', {
+      message: err.message,
+      code: err.code,
+      env_set: !!process.env.POSTGRES_URL
+    });
   }
 }
 
