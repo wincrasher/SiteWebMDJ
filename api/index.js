@@ -135,20 +135,29 @@ app.post('/api/reset', async (req, res) => {
   }
 });
 
-// Health check
-app.get('/api/health', async (req, res) => {
+// Health check - simple version first
+app.get('/api/health', (req, res) => {
+  const urlSet = process.env.POSTGRES_URL ? 'SET ✅' : 'NOT SET ❌';
+  res.json({ 
+    status: 'server_ok',
+    postgres_url: urlSet,
+    time: new Date().toISOString()
+  });
+});
+
+// Database health check
+app.get('/api/db-health', async (req, res) => {
   try {
+    console.log('Testing database connection...');
     const result = await pool.query('SELECT NOW()');
-    const urlSet = process.env.POSTGRES_URL ? 'SET ✅' : 'NOT SET ❌';
     res.json({ 
       status: 'ok',
       database: 'connected',
-      timestamp: result.rows[0].now,
-      postgres_url: urlSet
+      timestamp: result.rows[0].now
     });
   } catch (err) {
     const urlSet = process.env.POSTGRES_URL ? 'SET' : 'NOT SET';
-    console.error(`❌ Health check failed (POSTGRES_URL ${urlSet}):`, err.message, err.code);
+    console.error(`❌ DB health check failed (POSTGRES_URL ${urlSet}):`, err.message, err.code);
     res.status(500).json({ 
       status: 'error',
       database: 'disconnected',
