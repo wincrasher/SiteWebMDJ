@@ -16,7 +16,7 @@ console.log('🔧 Startup - Checking environment...');
 console.log('POSTGRES_URL present:', !!process.env.POSTGRES_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 
-// Parse connection string to handle SSL properly
+// Parse connection string and rebuild without problematic params
 let pgConfig = {
   ssl: { rejectUnauthorized: false },
   max: 10,
@@ -25,10 +25,19 @@ let pgConfig = {
 };
 
 if (process.env.POSTGRES_URL) {
-  // Remove sslmode from URL and let our ssl config handle it
-  const urlWithoutSSL = process.env.POSTGRES_URL.replace(/[?&]sslmode=[^&]*/g, '').replace(/[?&]$/, '');
-  pgConfig.connectionString = urlWithoutSSL;
-  console.log('📝 Connection string parsed (SSL will be handled by config)');
+  try {
+    const url = new URL(process.env.POSTGRES_URL);
+    pgConfig.user = url.username;
+    pgConfig.password = url.password;
+    pgConfig.host = url.hostname;
+    pgConfig.port = url.port || 5432;
+    pgConfig.database = url.pathname.slice(1); // Remove leading /
+    console.log('✅ Connection string parsed successfully');
+    console.log(`   Host: ${pgConfig.host}:${pgConfig.port}, DB: ${pgConfig.database}`);
+  } catch (err) {
+    console.error('❌ Failed to parse POSTGRES_URL:', err.message);
+    pgConfig.connectionString = process.env.POSTGRES_URL;
+  }
 }
 
 // Database connection
