@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration | Le Squat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <a class="brand" href="index.html">
+      <img src="logoMDJ.png" alt="Logo Le Squat" class="brand-logo">
+      <span>LE SQUAT<small style="color:#ffd23f">Administration</small></span>
+    </a>
+    <nav class="admin-nav">
+      <button data-k="heroBanner">🏠 Page d'accueil</button>
+      <button data-k="activitesRegulières">🎯 Activités régulières</button>
+      <button data-k="programmation">📅 Programmation mensuelle</button>
+      <button data-k="ressources">🆘 Ressources</button>
+      <button data-k="team">👥 Équipe</button>
+      <button data-k="partners">🤝 Partenaires</button>
+      <button data-k="photoYears">📸 Photos</button>
+      <button data-k="temoignages">💬 Témoignages</button>
+      <button data-k="ourStory">📖 Notre histoire</button>
+      <button data-k="theme">🎨 Thème</button>
+      <a class="btn btn-outline" style="margin-top:14px; background:transparent; border-color:#fff; color:#fff; text-align:center; gap:0" href="index.html">👁 Voir le site</a>
+      <button onclick="resetDemo()" style="margin-top:6px">🔄 Réinitialiser</button>
+      <button onclick="sessionStorage.removeItem('squat_admin'); location.reload()" style="margin-top:6px">🚪 Déconnexion</button>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-top">
+      <div>
+        <span class="badge">Tableau de bord</span>
+        <h1 style="font-size:2rem; color:#0c255f; margin:8px 0">Gestion du contenu</h1>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="showExportMenu()" style="border-color:#143a8f; color:#143a8f">📥 Exporter</button>
+        <button class="btn btn-outline" onclick="document.getElementById('import-file').click()" style="border-color:#143a8f; color:#143a8f">📤 Importer</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+    
+    <div class="notice" style="margin-bottom:28px">
+      <strong>📝 Prototype fonctionnel</strong><br>
+      Les modifications sont sauvegardées dans le navigateur (localStorage). Pour la production, connectez cette interface à une base de données sécurisée avec authentification côté serveur.
+    </div>
+
+    <section class="admin-panel" id="panel-heroBanner"></section>
+    <section class="admin-panel" id="panel-activitesRegulières"></section>
+    <section class="admin-panel" id="panel-programmation"></section>
+    <section class="admin-panel" id="panel-ressources"></section>
+    <section class="admin-panel" id="panel-team"></section>
+    <section class="admin-panel" id="panel-partners"></section>
+    <section class="admin-panel" id="panel-photoYears"></section>
+    <section class="admin-panel" id="panel-temoignages"></section>
+    <section class="admin-panel" id="panel-ourStory"></section>
+    <section class="admin-panel" id="panel-theme"></section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" onclick="if(event.target===this) closeModal()"></div>
+
+<script src="admin-logic.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

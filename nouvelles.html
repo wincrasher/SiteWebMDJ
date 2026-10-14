@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nouvelles | Le Squat</title>
+  <meta name="description" content="Actualités et nouvelles du Squat, Maison des jeunes de Saint-Liguori.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="topbar"><div class="container"><div>Maison des jeunes de Saint-Liguori · 11 à 17 ans</div><div class="quick"><span>📍 21, rue Larivière, Saint-Liguori</span><span>☎ 514-809-7728</span></div></div></div>
+<header class="header"><div class="container nav"><a class="brand" href="index.html"><img src="logoMDJ.png" alt="Logo Le Squat" class="brand-logo"><span>LE SQUAT<small>Maison des jeunes</small></span></a><button class="mobile-toggle" aria-label="Menu">☰</button><nav class="navlinks"><a href="index.html">Accueil</a><a href="programmation.html">Activités</a><a href="equipe.html">Équipe</a><a href="apropos.html">À propos</a><a href="photos.html">Photos</a><a href="ressources.html">Ressources</a><a href="contact.html">Contact</a><a class="btn btn-primary" href="don.html">Faire un don</a></nav></div></header>
+
+<main>
+<section class="hero" id="accueil" style="padding: 52px 0 42px;">
+  <div class="container">
+    <span class="eyebrow">📰 Nouvelles & Infos</span>
+    <h1>Actus du Squat</h1>
+    <p>Découvre tout ce qui se passe au Squat : nouveautés, annonces, inscriptions et rappels.</p>
+  </div>
+</section>
+
+<section style="padding: 60px 0;">
+  <div class="container">
+    <div class="grid grid-3" id="news-grid"></div>
+  </div>
+</section>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-grid"><div><a class="brand" href="index.html" style="color:white"><img src="logoMDJ.png" alt="Logo Le Squat" class="brand-logo"><span>LE SQUAT<small>Maison des jeunes de Saint-Liguori</small></span></a><p>Un espace accueillant, vivant et sécuritaire pour les 11 à 17 ans.</p></div><div><h3>Découvrir</h3><a href="programmation.html">Activités</a><a href="equipe.html">Équipe</a><a href="apropos.html">Notre histoire</a><a href="photos.html">Photos</a></div><div><h3>Infos</h3><a href="contact.html">Nous joindre</a><a href="partenaires.html">Partenaires</a><a href="contact.html">Contact</a><a href="admin.html">Administration</a></div><div id="sticky-container"></div></div><div class="footer-bottom">© <span id="year"></span> Maison des jeunes de Saint-Liguori — Le Squat. Prototype Web.</div></div></footer>
+
+<script src="admin-logic.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  renderNews();
+  setupNav();
+  displayRandomTestimonial();
+  applyThemeColors();
+  displayThemeDecorations();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "site-web-mdj",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site web - Maison des jeunes Le Squat",
+  "main": "api/index.js"
+}

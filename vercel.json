@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "public": "public",
+  "buildCommand": "cd . && echo Done",
+  "outputDirectory": "public"
+}
+
+
+
+
+
+
+
+
+
+
