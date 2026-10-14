@@ -1766,69 +1766,42 @@ async function loadAllFromDatabase(){
 }
 
 function stripImageDataForStorage(data){
-  // Remove image data URLs before storing in localStorage
+  // Aggressively remove ALL image data before storing in localStorage
   // Images stay in database only
+  if(!data) return data;
+  
   const stripped = JSON.parse(JSON.stringify(data));
   
-  // Hero banner - keep metadata, remove src
-  if(Array.isArray(stripped.heroBanner)){
-    stripped.heroBanner = stripped.heroBanner.map(item => {
-      const copy = {...item};
-      delete copy.src; // Remove image data
-      return copy;
-    });
-  }
-  
-  // Team - keep metadata, remove photos
-  if(Array.isArray(stripped.team)){
-    stripped.team = stripped.team.map(member => {
-      const copy = {...member};
-      delete copy.photo; // Remove image data
-      return copy;
-    });
-  }
-  
-  // Partners - keep metadata, remove logos
-  if(Array.isArray(stripped.partners)){
-    stripped.partners = stripped.partners.map(partner => {
-      const copy = {...partner};
-      delete copy.logo; // Remove image data
-      return copy;
-    });
-  }
-  
-  // Resources - keep metadata, remove logos
-  if(Array.isArray(stripped.ressources)){
-    stripped.ressources = stripped.ressources.map(resource => {
-      const copy = {...resource};
-      delete copy.logo; // Remove image data
-      return copy;
-    });
-  }
-  
-  // Photo years - remove covers and event photos
-  if(Array.isArray(stripped.photoYears)){
-    stripped.photoYears = stripped.photoYears.map(year => {
-      const copy = {...year};
-      delete copy.cover; // Remove cover image
-      if(copy.events){
-        copy.events = copy.events.map(event => {
-          const evCopy = {...event};
-          delete evCopy.photos; // Remove event photos
-          return evCopy;
-        });
+  // Remove ALL data URLs properties (they start with "data:")
+  function removeImageProps(obj){
+    if(!obj || typeof obj !== 'object') return obj;
+    
+    if(Array.isArray(obj)){
+      return obj.map(item => removeImageProps(item));
+    }
+    
+    const cleaned = {};
+    for(let key in obj){
+      const value = obj[key];
+      // Skip properties that contain image data
+      if(key === 'src' || key === 'photo' || key === 'logo' || key === 'cover' || key === 'calendarImage'){
+        continue; // Skip image properties
       }
-      return copy;
-    });
+      // Remove data URLs
+      if(typeof value === 'string' && value.startsWith('data:')){
+        continue; // Skip data URLs
+      }
+      // Recursively clean nested objects/arrays
+      if(typeof value === 'object'){
+        cleaned[key] = removeImageProps(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+    return cleaned;
   }
   
-  // Programming - remove calendar image
-  if(stripped.programmation && stripped.programmation.calendarImage){
-    stripped.programmation = {...stripped.programmation};
-    delete stripped.programmation.calendarImage;
-  }
-  
-  return stripped;
+  return removeImageProps(stripped);
 }
 
 function start(){
