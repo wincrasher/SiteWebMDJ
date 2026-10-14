@@ -13,7 +13,17 @@ const D={
 };
 
 function load(k){return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k]}
-function save(k,v){localStorage.setItem('squat_'+k,JSON.stringify(v))}
+function save(k,v){
+  try{
+    localStorage.setItem('squat_'+k,JSON.stringify(v))
+  }catch(e){
+    if(e.name==='QuotaExceededError'){
+      alert('⚠️ Stockage plein! Votre navigateur a atteint la limite de stockage (10MB).\n\nSolutions:\n1. Comprimez vos images avant upload\n2. Videz le cache navigateur\n3. Supprimez les anciennes données')
+      throw new Error('localStorage quota exceeded')
+    }
+    throw e
+  }
+}
 function e(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function logged(){return sessionStorage.getItem('squat_admin')==='1'}
 function saveDurationSetting(value){
@@ -88,7 +98,7 @@ function resizeImage(dataUrl,maxWidth=800,maxHeight=600){
       const y=(maxHeight-height)/2;
       ctx.drawImage(img,x,y,width,height);
       
-      const resized=canvas.toDataURL('image/jpeg',0.85);
+      const resized=canvas.toDataURL('image/jpeg',0.70);
       resolve(resized);
     };
     img.src=dataUrl;
@@ -1668,11 +1678,41 @@ function handleCalendarUpload(event){
   reader.readAsDataURL(file);
 }
 
+function getTotalStorageUsed(){
+  let total=0;
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key.startsWith('squat_')){
+      const value=localStorage.getItem(key);
+      total+=new Blob([value]).size;
+    }
+  }
+  return total;
+}
+
+function updateStorageIndicator(){
+  const used=getTotalStorageUsed();
+  const usedMB=(used/1024/1024).toFixed(2);
+  const percent=Math.min((used/(10*1024*1024))*100,100);
+  const color=percent>80?'#ef4444':percent>50?'#f59e0b':'#10b981';
+  const indicator=document.getElementById('storage-indicator');
+  if(indicator){
+    indicator.innerHTML=`
+      <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 Stockage: ${usedMB}MB / 10MB (${percent.toFixed(0)}%)</div>
+      <div style="width:100%;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+        <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
+      </div>
+    `;
+  }
+}
+
 function start(){
   if(!logged())return showLogin();
   applyThemeColors();
   K.forEach(renderPanel);
   document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
+  updateStorageIndicator();
+  setInterval(updateStorageIndicator,1000);
   switchPanel('heroBanner')
 }
 
