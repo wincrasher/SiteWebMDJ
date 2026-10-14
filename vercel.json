@@ -1,7 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "cd . && echo Done",
-  "outputDirectory": "public"
+  "buildCommand": "npm install",
+  "outputDirectory": "public",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/$1"
+    }
+  ]
 }
 
 

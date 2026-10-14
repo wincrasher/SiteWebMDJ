@@ -12,11 +12,37 @@ const D={
   theme:{label:'Thème du site',fields:[]}
 };
 
-function load(k){return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k]}
-function save(k,v){
+const API_URL = window.location.origin + '/api';
+const USE_DATABASE = true; // Set to false to use localStorage only
+
+async function load(k){
+  try {
+    if (!USE_DATABASE) throw new Error('Database disabled');
+    const response = await fetch(`${API_URL}/${k}`);
+    if (!response.ok) throw new Error('API error');
+    const data = await response.json();
+    return data || defaults[k];
+  } catch (err) {
+    console.warn(`Using localStorage for ${k}:`, err.message);
+    return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k];
+  }
+}
+
+async function save(k,v){
   try{
-    localStorage.setItem('squat_'+k,JSON.stringify(v))
+    if (USE_DATABASE) {
+      const response = await fetch(`${API_URL}/${k}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(v)
+      });
+      if (!response.ok) throw new Error('API save failed');
+      console.log(`✅ ${k} saved to database`);
+    }
+    // Also save to localStorage as backup
+    localStorage.setItem('squat_'+k,JSON.stringify(v));
   }catch(e){
+    console.error('Save error:', e);
     if(e.name==='QuotaExceededError'){
       alert('⚠️ Stockage plein! Votre navigateur a atteint la limite de stockage (10MB).\n\nSolutions:\n1. Comprimez vos images avant upload\n2. Videz le cache navigateur\n3. Supprimez les anciennes données')
       throw new Error('localStorage quota exceeded')
