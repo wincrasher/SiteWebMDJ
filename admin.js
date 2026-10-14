@@ -19,27 +19,40 @@ function load(k){
   return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k];
 }
 
+async function loadFullFromDatabase(k){
+  // Fetch complete data with images from database
+  try {
+    const response = await fetch(`${API_URL}/${k}`);
+    if(response.ok){
+      return await response.json();
+    }
+  } catch(e) {
+    console.warn(`Failed to fetch ${k} from database:`, e.message);
+  }
+  return load(k); // Fallback to localStorage
+}
+
 function save(k,v){
   try {
-    const jsonStr = JSON.stringify(v);
-    
-    // Try to save to database in background (non-blocking)
+    // Send FULL data to database (with images)
     if (USE_DATABASE) {
       fetch(`${API_URL}/${k}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: jsonStr
+        body: JSON.stringify(v)
       }).then(r => {
         if (r.ok) console.log(`✅ ${k} saved to database`);
         else console.warn(`Database save failed: ${r.status}`);
       }).catch(err => console.warn('API unavailable:', err.message));
     }
     
-    // Save to localStorage (required for displaying data)
-    localStorage.setItem('squat_'+k, jsonStr);
+    // Save to localStorage WITHOUT image data (to save space)
+    const localStorageData = stripImageDataForStorage(v);
+    localStorage.setItem('squat_'+k, JSON.stringify(localStorageData));
   } catch(e){
     if(e.name==='QuotaExceededError'){
-      alert('⚠️ STORAGE FULL! (10MB limit reached)\n\nSolutions:\n1. Delete old images/data\n2. Clear browser cache\n3. Use a different browser\n\nNote: If database is connected, your data is backed up!');
+      alert('⚠️ STORAGE FULL! (10MB limit reached)\n\nThe site is trying to save more data than localStorage can hold.\n\nNote: Your data IS being saved to the database!\n\nClick OK to reload and see the latest data from the database.');
+      location.reload();
       throw new Error('localStorage quota exceeded');
     }
     throw e;
@@ -1735,10 +1748,12 @@ async function loadAllFromDatabase(){
       try {
         const response = await fetch(`${API_URL}/${section}`);
         if(response.ok){
-          const data = await response.json();
+          let data = await response.json();
           if(data && Object.keys(data).length > 0){
+            // Filter out large image data before storing in localStorage
+            data = stripImageDataForStorage(data);
             localStorage.setItem('squat_'+section, JSON.stringify(data));
-            console.log(`✅ Loaded ${section} from database`);
+            console.log(`✅ Loaded ${section} from database (images not cached)`);
           }
         }
       } catch(e){
@@ -1748,6 +1763,72 @@ async function loadAllFromDatabase(){
   } catch(e){
     console.error('Database load failed:', e);
   }
+}
+
+function stripImageDataForStorage(data){
+  // Remove image data URLs before storing in localStorage
+  // Images stay in database only
+  const stripped = JSON.parse(JSON.stringify(data));
+  
+  // Hero banner - keep metadata, remove src
+  if(Array.isArray(stripped.heroBanner)){
+    stripped.heroBanner = stripped.heroBanner.map(item => {
+      const copy = {...item};
+      delete copy.src; // Remove image data
+      return copy;
+    });
+  }
+  
+  // Team - keep metadata, remove photos
+  if(Array.isArray(stripped.team)){
+    stripped.team = stripped.team.map(member => {
+      const copy = {...member};
+      delete copy.photo; // Remove image data
+      return copy;
+    });
+  }
+  
+  // Partners - keep metadata, remove logos
+  if(Array.isArray(stripped.partners)){
+    stripped.partners = stripped.partners.map(partner => {
+      const copy = {...partner};
+      delete copy.logo; // Remove image data
+      return copy;
+    });
+  }
+  
+  // Resources - keep metadata, remove logos
+  if(Array.isArray(stripped.ressources)){
+    stripped.ressources = stripped.ressources.map(resource => {
+      const copy = {...resource};
+      delete copy.logo; // Remove image data
+      return copy;
+    });
+  }
+  
+  // Photo years - remove covers and event photos
+  if(Array.isArray(stripped.photoYears)){
+    stripped.photoYears = stripped.photoYears.map(year => {
+      const copy = {...year};
+      delete copy.cover; // Remove cover image
+      if(copy.events){
+        copy.events = copy.events.map(event => {
+          const evCopy = {...event};
+          delete evCopy.photos; // Remove event photos
+          return evCopy;
+        });
+      }
+      return copy;
+    });
+  }
+  
+  // Programming - remove calendar image
+  if(stripped.programmation && stripped.programmation.calendarImage){
+    stripped.programmation = {...stripped.programmation};
+    delete stripped.programmation.calendarImage;
+  }
+  
+  return stripped;
 }
 
 function start(){
