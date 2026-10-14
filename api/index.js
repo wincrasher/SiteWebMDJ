@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -11,22 +12,26 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../public')));
 
+console.log('🔧 Startup - Checking environment...');
+console.log('POSTGRES_URL present:', !!process.env.POSTGRES_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
+
 // Database connection
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false
-  },
+  ssl: { rejectUnauthorized: false },
+  max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('❌ Unexpected pool error:', err.message);
 });
 
-console.log('🔧 Database URL configured:', process.env.POSTGRES_URL ? 'YES (env var set)' : 'NO (env var missing)');
+pool.on('connect', () => {
+  console.log('✅ New pool connection created');
+});
 
 // Initialize database schema
 async function initDatabase() {
@@ -116,18 +121,22 @@ app.post('/api/reset', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
+    const urlSet = process.env.POSTGRES_URL ? 'SET ✅' : 'NOT SET ❌';
     res.json({ 
       status: 'ok',
       database: 'connected',
-      timestamp: result.rows[0].now
+      timestamp: result.rows[0].now,
+      postgres_url: urlSet
     });
   } catch (err) {
-    console.error('Health check error:', err.message);
+    const urlSet = process.env.POSTGRES_URL ? 'SET' : 'NOT SET';
+    console.error(`❌ Health check failed (POSTGRES_URL ${urlSet}):`, err.message, err.code);
     res.status(500).json({ 
       status: 'error',
       database: 'disconnected',
       error: err.message,
-      postgres_url: process.env.POSTGRES_URL ? 'SET' : 'NOT SET'
+      code: err.code,
+      postgres_url: urlSet
     });
   }
 });
