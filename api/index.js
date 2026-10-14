@@ -105,15 +105,4 @@ if (require.main === module) {
     console.log(`🚀 Server running on port ${PORT}`);
   });
 }
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 - Not found: ' + pathname);
-    } else {
-      res.writeHead(200, { 
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=3600, immutable'
-      });
-      res.end(data);
-    }
-  });
-};
 
