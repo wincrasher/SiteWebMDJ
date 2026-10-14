@@ -13,12 +13,22 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL
+  connectionString: process.env.POSTGRES_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 // Initialize database schema
 async function initDatabase() {
   try {
+    console.log('🔌 Attempting database connection...');
+    const client = await pool.connect();
+    console.log('✅ Database connected');
+    client.release();
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS site_data (
         id SERIAL PRIMARY KEY,
@@ -34,9 +44,9 @@ async function initDatabase() {
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Database initialized');
+    console.log('✅ Database schema initialized');
   } catch (err) {
-    console.error('Database initialization error:', err);
+    console.error('❌ Database initialization error:', err.message);
   }
 }
 
@@ -55,7 +65,7 @@ app.get('/api/:section', async (req, res) => {
       res.json({});
     }
   } catch (err) {
-    console.error('GET /api/:section error:', err);
+    console.error(`❌ GET /api/${req.params.section} error:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -71,9 +81,10 @@ app.post('/api/:section', async (req, res) => {
       [`squat_${section}`, JSON.stringify(data)]
     );
     
+    console.log(`✅ POST /api/${section} saved successfully`);
     res.json({ success: true, message: `${section} saved` });
   } catch (err) {
-    console.error('POST error:', err);
+    console.error(`❌ POST /api/${req.params.section} error:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -81,17 +92,33 @@ app.post('/api/:section', async (req, res) => {
 // DELETE - Clear all data (admin only)
 app.post('/api/reset', async (req, res) => {
   try {
-    await pool.query('DELETE FROM site_data WHERE key LIKE $1', ['squat_%']);
+    const result = await pool.query('DELETE FROM site_data WHERE key LIKE $1', ['squat_%']);
+    console.log(`✅ Reset: deleted ${result.rowCount} rows`);
     res.json({ success: true, message: 'All data reset' });
   } catch (err) {
-    console.error('Reset error:', err);
+    console.error('❌ Reset error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'ok',
+      database: 'connected',
+      timestamp: result.rows[0].now
+    });
+  } catch (err) {
+    console.error('Health check error:', err.message);
+    res.status(500).json({ 
+      status: 'error',
+      database: 'disconnected',
+      error: err.message,
+      postgres_url: process.env.POSTGRES_URL ? 'SET' : 'NOT SET'
+    });
+  }
 });
 
 // Fallback - serve index.html for any non-API routes
