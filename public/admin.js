@@ -1728,14 +1728,49 @@ function updateStorageIndicator(){
   }
 }
 
+async function loadAllFromDatabase(){
+  console.log('🔄 Loading data from database...');
+  try {
+    for(const section of K){
+      try {
+        const response = await fetch(`${API_URL}/${section}`);
+        if(response.ok){
+          const data = await response.json();
+          if(data && Object.keys(data).length > 0){
+            localStorage.setItem('squat_'+section, JSON.stringify(data));
+            console.log(`✅ Loaded ${section} from database`);
+          }
+        }
+      } catch(e){
+        console.warn(`Failed to load ${section}:`, e.message);
+      }
+    }
+  } catch(e){
+    console.error('Database load failed:', e);
+  }
+}
+
 function start(){
   if(!logged())return showLogin();
-  applyThemeColors();
-  K.forEach(renderPanel);
-  document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
-  updateStorageIndicator();
-  setInterval(updateStorageIndicator,1000);
-  switchPanel('heroBanner')
+  
+  // Load data from database first, then render
+  loadAllFromDatabase().then(() => {
+    applyThemeColors();
+    K.forEach(renderPanel);
+    document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
+    updateStorageIndicator();
+    setInterval(updateStorageIndicator,1000);
+    switchPanel('heroBanner');
+  }).catch(err => {
+    console.error('Init failed:', err);
+    // Still render even if database fails
+    applyThemeColors();
+    K.forEach(renderPanel);
+    document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
+    updateStorageIndicator();
+    setInterval(updateStorageIndicator,1000);
+    switchPanel('heroBanner');
+  });
 }
 
 document.addEventListener('DOMContentLoaded',start)
