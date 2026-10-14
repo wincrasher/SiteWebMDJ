@@ -8,6 +8,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.static('public'));
 
 // Database connection
 const pool = new Pool({

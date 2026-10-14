@@ -1,5 +1,12 @@
 {
-  "version": 2
+  "version": 2,
+  "public": false,
+  "rewrites": [
+    {
+      "source": "/api/:section",
+      "destination": "/api?section=:section"
+    }
+  ]
 }
 
 
