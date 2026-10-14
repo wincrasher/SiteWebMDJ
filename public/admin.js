@@ -13,43 +13,39 @@ const D={
 };
 
 const API_URL = window.location.origin + '/api';
-const USE_DATABASE = true; // Set to false to use localStorage only
+const USE_DATABASE = true;
 
-async function load(k){
-  try {
-    if (!USE_DATABASE) throw new Error('Database disabled');
-    const response = await fetch(`${API_URL}/${k}`);
-    if (!response.ok) throw new Error('API error');
-    const data = await response.json();
-    return data || defaults[k];
-  } catch (err) {
-    console.warn(`Using localStorage for ${k}:`, err.message);
-    return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k];
-  }
+function load(k){
+  return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k];
 }
 
-async function save(k,v){
-  try{
+function save(k,v){
+  try {
+    const jsonStr = JSON.stringify(v);
+    
+    // Try to save to database in background (non-blocking)
     if (USE_DATABASE) {
-      const response = await fetch(`${API_URL}/${k}`, {
+      fetch(`${API_URL}/${k}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(v)
-      });
-      if (!response.ok) throw new Error('API save failed');
-      console.log(`✅ ${k} saved to database`);
+        body: jsonStr
+      }).then(r => {
+        if (r.ok) console.log(`✅ ${k} saved to database`);
+        else console.warn(`Database save failed: ${r.status}`);
+      }).catch(err => console.warn('API unavailable:', err.message));
     }
-    // Also save to localStorage as backup
-    localStorage.setItem('squat_'+k,JSON.stringify(v));
-  }catch(e){
-    console.error('Save error:', e);
+    
+    // Save to localStorage (required for displaying data)
+    localStorage.setItem('squat_'+k, jsonStr);
+  } catch(e){
     if(e.name==='QuotaExceededError'){
-      alert('⚠️ Stockage plein! Votre navigateur a atteint la limite de stockage (10MB).\n\nSolutions:\n1. Comprimez vos images avant upload\n2. Videz le cache navigateur\n3. Supprimez les anciennes données')
-      throw new Error('localStorage quota exceeded')
+      alert('⚠️ STORAGE FULL! (10MB limit reached)\n\nSolutions:\n1. Delete old images/data\n2. Clear browser cache\n3. Use a different browser\n\nNote: If database is connected, your data is backed up!');
+      throw new Error('localStorage quota exceeded');
     }
-    throw e
+    throw e;
   }
 }
+
 function e(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function logged(){return sessionStorage.getItem('squat_admin')==='1'}
 function saveDurationSetting(value){
