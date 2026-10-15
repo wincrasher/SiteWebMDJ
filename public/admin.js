@@ -236,19 +236,34 @@ function renderStorageBar(bytes,label='',limit=100){
 // Get and display database storage stats
 async function getDatabaseStats(){
   try {
+    console.log('🔍 Fetching stats from:', `${API_URL}/db-stats`);
     const response = await fetch(`${API_URL}/db-stats`);
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ DB Stats API Response:', data);
+    const data = await response.json();
+    
+    console.log('📡 Raw API Response:', data);
+    console.log('  - Type:', typeof data);
+    console.log('  - Is Array:', Array.isArray(data));
+    console.log('  - Keys:', data && typeof data === 'object' ? Object.keys(data) : 'N/A');
+    console.log('  - Status:', response.status);
+    console.log('  - Status OK:', response.ok);
+    
+    if (response.ok && data && typeof data === 'object' && !Array.isArray(data) && data.used_mb !== undefined) {
+      console.log('✅ Valid stats object received');
       return data;
+    } else if (!response.ok) {
+      console.error('❌ API returned error status:', response.status);
+      console.error('Error response:', data);
+      return null;
     } else {
-      console.error('❌ DB Stats API Error - Status:', response.status);
-      const errorData = await response.json();
-      console.error('Error details:', errorData);
+      console.warn('⚠️ API returned unexpected format:');
+      console.warn('  - Is empty array:', Array.isArray(data) && data.length === 0);
+      console.warn('  - Has used_mb field:', data && 'used_mb' in data);
+      console.warn('  - Data:', data);
       return null;
     }
   } catch (err) {
-    console.error('❌ Failed to get DB stats:', err.message);
+    console.error('❌ Failed to get DB stats - Exception:', err.message);
+    console.error('  Stack:', err.stack);
   }
   return null;
 }
@@ -2001,15 +2016,31 @@ function getTotalStorageUsed(){
 
 async function updateStorageIndicator(){
   const indicator=document.getElementById('storage-indicator');
-  if(!indicator) return;
+  if(!indicator) {
+    console.warn('⚠️ storage-indicator element not found');
+    return;
+  }
   
   try {
     const stats = await getDatabaseStats();
-    console.log('📊 updateStorageIndicator received stats:', stats);
+    console.log('📊 updateStorageIndicator - Received stats:', stats);
     
-    if (!stats || !stats.used_mb) {
-      console.warn('⚠️ Stats missing required fields:', stats);
-      indicator.innerHTML = '<small style="color:#657089">Impossible de charger les stats BD</small>';
+    if (!stats) {
+      console.warn('⚠️ No stats returned from getDatabaseStats');
+      indicator.innerHTML = '<small style="color:#657089">Stats BD indisponibles (aucune donnée)</small>';
+      return;
+    }
+    
+    if (Array.isArray(stats)) {
+      console.error('❌ Stats is an array instead of object:', stats);
+      indicator.innerHTML = '<small style="color:#e74c3c">Erreur: Format stats invalide (array)</small>';
+      return;
+    }
+    
+    if (!stats.used_mb) {
+      console.warn('⚠️ Stats missing required field used_mb');
+      console.warn('   Stats object keys:', Object.keys(stats));
+      indicator.innerHTML = '<small style="color:#e74c3c">Stats BD invalides: champ used_mb manquant</small>';
       return;
     }
     
@@ -2017,15 +2048,23 @@ async function updateStorageIndicator(){
     const limit = parseInt(stats.limit_mb) || 500;
     const percent = parseFloat(stats.percentage_used);
     
-    console.log('📊 Parsed values - used:', used, 'limit:', limit, 'percent:', percent);
+    console.log('📊 Parsed values - used:', used, 'USED TYPE:', typeof used, 'limit:', limit, 'percent:', percent);
     
-    if (isNaN(used) || isNaN(percent)) {
-      console.error('⚠️ Invalid stats values - NaN detected');
-      indicator.innerHTML = '<small style="color:#657089">Stats BD invalides</small>';
+    if (isNaN(used)) {
+      console.error('❌ used_mb cannot be parsed as number:', stats.used_mb, 'TYPE:', typeof stats.used_mb);
+      indicator.innerHTML = '<small style="color:#e74c3c">Erreur: used_mb not a number</small>';
+      return;
+    }
+    
+    if (isNaN(percent)) {
+      console.error('❌ percentage_used cannot be parsed as number:', stats.percentage_used);
+      indicator.innerHTML = '<small style="color:#e74c3c">Erreur: percentage_used not a number</small>';
       return;
     }
     
     const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
+    
+    console.log('✅ Rendering with - used:', used, 'limit:', limit, 'percent:', percent, 'color:', color);
     
     indicator.innerHTML = `
       <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 BD: ${used} MB / ${limit} MB (${percent}%)</div>
@@ -2034,7 +2073,9 @@ async function updateStorageIndicator(){
       </div>
     `;
   } catch (err) {
-    indicator.innerHTML = '<small style="color:#999">Stats BD indisponibles</small>';
+    console.error('❌ updateStorageIndicator exception:', err.message);
+    console.error('   Stack:', err.stack);
+    indicator.innerHTML = '<small style="color:#e74c3c">Erreur: ' + esc(err.message.substring(0, 50)) + '</small>';
   }
 }
 
