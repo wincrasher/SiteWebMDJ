@@ -1023,8 +1023,9 @@ function openEditor(k,id){
         return;
       }
       const reader=new FileReader();
-      reader.onload=(evt)=>{
-        coverData=evt.target.result;
+      reader.onload=async(evt)=>{
+        // Compress and resize cover image for better storage
+        coverData=await resizeImage(evt.target.result, 800, 500, 0.60);
         previewImg.src=coverData;
         previewZone.style.display='block';
       };
