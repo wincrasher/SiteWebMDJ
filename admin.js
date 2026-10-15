@@ -24,8 +24,16 @@ async function initializeFromDatabase() {
     try {
       const response = await fetch(`${API_URL}/${section}`);
       if (response.ok) {
-        dataCache[section] = await response.json();
-        console.log(`✅ Loaded ${section}`);
+        let data = await response.json();
+        
+        // Ensure arrays are arrays, not objects
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          console.warn(`⚠️ ${section} returned object instead of array, converting...`);
+          data = [];
+        }
+        
+        dataCache[section] = data || [];
+        console.log(`✅ Loaded ${section} (${Array.isArray(data) ? data.length : 'empty'})`);
       } else {
         console.warn(`⚠️ Failed to load ${section}: HTTP ${response.status}`);
         dataCache[section] = [];
@@ -62,11 +70,18 @@ async function initializeFromDatabase() {
 
 // Get data from memory cache
 function load(k) {
-  if (dataCache[k] !== undefined) {
-    return dataCache[k];
+  const value = dataCache[k];
+  
+  // If not loaded yet, return safe default
+  if (value === undefined) {
+    // Most sections are arrays, except theme and settings
+    if (k === 'theme') return 'aucun';
+    if (k === 'heroBannerDuration') return 5;
+    return [];
   }
-  // Return empty array or object based on expected type
-  return Array.isArray(dataCache[k]) ? [] : (k === 'theme' || k === 'heroBannerDuration' ? 'aucun' : []);
+  
+  // Return the cached data
+  return value;
 }
 
 // Save data to database AND update cache
@@ -265,7 +280,14 @@ function renderPanel(k){
   if(!p) return;
   
   // Get data from in-memory cache (loaded at startup)
-  const data = load(k);
+  let data = load(k);
+  
+  // Ensure data is correct type
+  if (!Array.isArray(data)) {
+    console.warn(`⚠️ renderPanel: ${k} data is not an array, fixing...`);
+    data = [];
+  }
+  
   renderPanelContent(k, p, data);
 }
 

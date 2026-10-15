@@ -97,7 +97,8 @@ app.get('/api/:section', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0].value);
     } else {
-      res.json({});
+      // Return empty array instead of object - most sections are arrays
+      res.json([]);
     }
   } catch (err) {
     console.error(`❌ GET /api/${req.params.section} error:`, err.message);
