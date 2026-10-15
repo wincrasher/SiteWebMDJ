@@ -1,6 +1,6 @@
 const defaults = {
   heroBanner:[
-    {id:1,src:'assets/mission.jpeg',caption:'Un espace à toi.'}
+    {id:1,src:'',caption:'Un espace à toi.'}
   ],
   heroBannerDuration:5,
   news:[
@@ -19,7 +19,7 @@ const defaults = {
   ],
   programmation:{
     facebookLink:"https://www.facebook.com/Maison.Des.Ados11.17",
-    calendarImage:"assets/mission.jpeg"
+    calendarImage:""
   },
   ressources:[
     {id:1,name:"Jeunesse J'écoute",phone:"1 800 668-6868",url:"http://jeunessejecoute.ca",logo:"https://jeunessejecoute.ca/wp-content/uploads/sites/2/JJE_DEPUIS1989_FR_Colour-Pairings-pink-alpine.png"},
@@ -48,17 +48,17 @@ const defaults = {
     {id:3,name:"Commanditaire local",type:"Commanditaire",logo:""}
   ],
   photoYears:[
-    {id:2026,year:2026,cover:"assets/mission.jpeg",events:[
+    {id:2026,year:2026,cover:"",events:[
       {id:1,name:"Basketball Championship",date:"2026-09-20",description:"",photos:[
-        {id:1,src:"assets/mission.jpeg",caption:"Moment du match"},
-        {id:2,src:"assets/activites.jpeg",caption:"Les jeunes en action"}
+        {id:1,src:"",caption:"Moment du match"},
+        {id:2,src:"",caption:"Les jeunes en action"}
       ]},
       {id:2,name:"Atelier Créatif",date:"2026-09-15",description:"",photos:[
-        {id:3,src:"assets/participation.jpeg",caption:"Création en cours"},
-        {id:4,src:"assets/equipe.jpeg",caption:"Présentation des œuvres"}
+        {id:3,src:"",caption:"Création en cours"},
+        {id:4,src:"",caption:"Présentation des œuvres"}
       ]}
     ]},
-    {id:2025,year:2025,cover:"assets/activites.jpeg",events:[]}
+    {id:2025,year:2025,cover:"",events:[]}
   ],
   temoignages:[
     {id:1,message:"Le Squat c'est comme une deuxième famille. J'y viens pour me détendre et être moi-même.",author:"Mégane"},
@@ -333,7 +333,6 @@ function renderRessources(){
 function renderTeam(){
   const el=document.querySelector('#team-grid');
   if(!el)return;
-  const fallback=['assets/equipe.jpeg','assets/mission.jpeg','assets/activites.jpeg'];
   const teamData=getData('team');
   
   // Ordre des rôles pour l'Équipe
@@ -361,9 +360,9 @@ function renderTeam(){
   Object.entries(sections).forEach(([section,members])=>{
     if(members.length>0){
       html+=`<h3 style="grid-column:1/-1;color:#0c255f;margin-top:24px;margin-bottom:0;padding-top:16px;border-top:2px solid #d4d4d4">${section}</h3>`;
-      html+=members.map((m,i)=>`
+      html+=members.map((m)=>`
         <article class="card team-card">
-          <img class="team-avatar" src="${m.photo||fallback[i%fallback.length]}" alt="Photo de ${esc(m.name)}">
+          ${m.photo?`<img class="team-avatar" src="${m.photo}" alt="Photo de ${esc(m.name)}">`:`<div class="team-avatar" style="background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:48px">👤</div>`}
           <h3>${esc(m.name)}</h3>
           <div class="team-role">${esc(m.role)}</div>
           <ul class="team-facts">${(m.facts||[]).map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
@@ -407,7 +406,7 @@ function renderPhotos(){
   const years=getData('photoYears').sort((a,b)=>b.year-a.year);
   el.innerHTML=years.map(y=>`
     <figure style="cursor:pointer" onclick="location.href='photos-annee.html?year=${y.year}'">
-      <img src="${y.cover}" alt="Photos ${y.year}">
+      ${y.cover ? `<img src="${y.cover}" alt="Photos ${y.year}">` : `<div style="width:100%;aspect-ratio:16/9;background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:48px">📸</div>`}
       <figcaption>📁 ${y.year} (${y.events.length} événement${y.events.length!==1?'s':''})</figcaption>
     </figure>
   `).join('')
@@ -436,7 +435,7 @@ function renderPhotosByYear(){
       ${e.description?`<p style="color:#657089;font-size:14px;flex:1">${esc(e.description)}</p>`:''}
       <p>${e.photos.length} photo${e.photos.length!==1?'s':''}</p>
       <div style="height:200px;background:#eef3fb;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:12px 0">
-        <img src="${e.photos[0]?.src || 'assets/mission.jpeg'}" alt="${esc(e.name)}" style="max-height:100%;max-width:100%;object-fit:cover;border-radius:8px">
+        ${e.photos[0]?.src ? `<img src="${e.photos[0].src}" alt="${esc(e.name)}" style="max-height:100%;max-width:100%;object-fit:cover;border-radius:8px">` : `<div style="font-size:48px">📸</div>`}
       </div>
       <a class="btn btn-outline" style="width:100%;justify-content:center;margin-top:auto">Voir les photos →</a>
     </div>
@@ -485,7 +484,7 @@ function renderPhotosByEvent(){
   
   el.innerHTML=eventData.photos.map(p=>`
     <figure>
-      <img src="${p.src}" alt="${esc(p.caption)}">
+      ${p.src ? `<img src="${p.src}" alt="${esc(p.caption)}">` : `<div style="width:100%;aspect-ratio:4/3;background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:48px">📸</div>`}
       <figcaption>${esc(p.caption)}</figcaption>
     </figure>
   `).join('')
@@ -557,6 +556,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyThemeIcons(getData('theme'));
     displayRandomTestimonial();
     setupNav();
+    // Setup hero banner if it exists (only on index.html)
+    if (typeof setupHeroBanner === 'function') {
+      setupHeroBanner();
+    }
     console.log('✅ Page render complete');
   } catch (err) {
     console.error('❌ Error rendering page:', err);

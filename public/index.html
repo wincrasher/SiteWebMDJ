@@ -25,15 +25,15 @@
     </div>
     <div class="hero-card-stack" id="hero-stack">
       <div class="hero-card hero-card-back">
-        <img class="hero-card-img" src="assets/mission.jpeg" alt="Jeunes à la Maison des jeunes Le Squat">
+        <img class="hero-card-img" style="background:#eef3fb" alt="Jeunes à la Maison des jeunes Le Squat">
         <div class="caption"><span>Un espace à toi.</span><span style="color:var(--red)">11–17 ans</span></div>
       </div>
       <div class="hero-card hero-card-middle">
-        <img class="hero-card-img" src="assets/mission.jpeg" alt="Jeunes à la Maison des jeunes Le Squat">
+        <img class="hero-card-img" style="background:#eef3fb" alt="Jeunes à la Maison des jeunes Le Squat">
         <div class="caption"><span>Un espace à toi.</span><span style="color:var(--red)">11–17 ans</span></div>
       </div>
       <div class="hero-card hero-card-front" id="hero-card-front">
-        <img id="hero-image" class="hero-card-img" src="assets/mission.jpeg" alt="Jeunes à la Maison des jeunes Le Squat">
+        <img id="hero-image" class="hero-card-img" style="background:#eef3fb" alt="Jeunes à la Maison des jeunes Le Squat">
         <div class="caption"><span id="hero-caption">Un espace à toi.</span><span style="color:var(--red)">11–17 ans</span></div>
       </div>
     </div>
@@ -132,7 +132,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   setupNav();
-  setupHeroBanner();
   applyThemeColors();
   displayThemeDecorations();
 });
@@ -146,11 +145,8 @@ function setupHeroBanner(){
   
   if(!heroImage || !heroCaption || !heroCardFront) return;
   
-  // Load hero banner images from localStorage
-  const heroBannerData=JSON.parse(localStorage.getItem('squat_heroBanner')||'null');
-  const images=heroBannerData&&heroBannerData.length?heroBannerData:[
-    {id:1,src:'assets/mission.jpeg',caption:'Un espace à toi.'}
-  ];
+  // Load hero banner images from API
+  const images=getData('heroBanner')||[];
   
   if(images.length===0) return;
   
