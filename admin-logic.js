@@ -553,6 +553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTeam();
     renderPartners();
     renderPhotos();
+    renderOurStory();
     displayThemeDecorations();
     applyThemeIcons(getData('theme'));
     displayRandomTestimonial();
