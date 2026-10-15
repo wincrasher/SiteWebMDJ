@@ -1,80 +1,18 @@
 const defaults = {
-  heroBanner:[
-    {id:1,src:'',caption:'Un espace à toi.'}
-  ],
-  heroBannerDuration:5,
-  news:[
-    {id:1,title:"Bienvenue sur le nouveau site du Squat!",date:"2026-09-09",text:"Un nouvel espace pour suivre nos activités, notre programmation et les nouvelles de la Maison des jeunes."},
-    {id:2,title:"Programmation d'automne",date:"2026-09-01",text:"Surveille le calendrier : soirées thématiques, jeux, sports, ateliers et sorties seront ajoutés tout au long de la saison."}
-  ],
-  activitesRegulières:[
-    {id:1,name:"Bouffe",desc:"Venez partager des moments conviviaux autour de collations et repas."},
-    {id:2,name:"Table de jeu",desc:"Pool, air hockey, ping pong et autres jeux de table. Un classique du Squat!"},
-    {id:3,name:"Salle de musique",desc:"Instruments, répétitions et passion musicale dans un espace dédié."},
-    {id:4,name:"Coin calme",desc:"Un espace zen pour te détendre, lire ou méditer en toute tranquillité."},
-    {id:5,name:"Coin art",desc:"Peinture, dessin, sculpture et création libre. Laisse ton imagination s'exprimer!"},
-    {id:6,name:"Coin jeu vidéo",desc:"Consoles, PC gaming et jeux variés pour les amateurs de gaming."},
-    {id:7,name:"Jeu de société",desc:"Stratégie, coopération, fun - des jeux pour tous les goûts!"},
-    {id:8,name:"Aide aux devoirs",desc:"Les intervenants t'aident avec tes devoirs et tes études."}
-  ],
-  programmation:{
-    facebookLink:"https://www.facebook.com/Maison.Des.Ados11.17",
-    calendarImage:""
-  },
-  ressources:[
-    {id:1,name:"Jeunesse J'écoute",phone:"1 800 668-6868",url:"http://jeunessejecoute.ca",logo:"https://jeunessejecoute.ca/wp-content/uploads/sites/2/JJE_DEPUIS1989_FR_Colour-Pairings-pink-alpine.png"},
-    {id:2,name:"Tel-Aide",phone:"514 935-1105",url:"http://telaide.org",logo:""},
-    {id:3,name:"S.O.S grossesse",phone:"1 877 662-9666",url:"http://sosgrossesse.ca",logo:"https://sosgrossesse.ca/wp-content/uploads/logo-woo.png"},
-    {id:4,name:"Drogue : aide et référence",phone:"514 527-2626 ou 1 800 265-2626",url:"http://drogue-aidereference.qc.ca",logo:""},
-    {id:5,name:"Interligne",phone:"1 888 505-1010",url:"http://interligne.co",logo:""},
-    {id:6,name:"LigneParents",phone:"1 800 361-5085",url:"http://ligneparents.com",logo:""},
-    {id:7,name:"S.O.S Suicide Jeunesse",phone:"1 800 595-5580",url:"http://sos-suicide.org",logo:""}
-  ],
-  events:[
-    {id:1,title:"Soirée jeux & arcade",date:"2026-09-11",time:"17 h à 21 h",desc:"Jeux de société, jeux vidéo et arcade entre amis."},
-    {id:2,title:"Atelier créatif",date:"2026-09-15",time:"18 h à 20 h",desc:"Peinture, dessin et création libre."},
-    {id:3,title:"Vendredi cinéma",date:"2026-09-18",time:"19 h",desc:"Film choisi par les jeunes et collations sur place."}
-  ],
-  team:[
-    {id:1,name:"Jérémy",gender:"Homme",role:"Coordonnateur",section:"Équipe",photo:"",facts:["Sa couleur préférée est le rose","Il sait faire un trèfle avec sa langue","Il aime jouer aux jeux vidéo"]},
-    {id:2,name:"Ellie",gender:"Femme",role:"Intervenante",section:"Équipe",photo:"",facts:["Sa couleur préférée est le vert","Elle joue du saxophone","Elle aime la randonnée"]},
-    {id:3,name:"Naomy",gender:"Femme",role:"Intervenante",section:"Équipe",photo:"",facts:["Sa couleur préférée est le bleu","Son animal préféré est le phoque","Elle aime faire du kayak et de l'escalade"]},
-    {id:4,name:"Marie Contourex",gender:"Femme",role:"Présidente",section:"Conseil d'administration",photo:"",facts:["Directrice générale","Engagement communautaire"]},
-    {id:5,name:"Jean Tremblay",gender:"Homme",role:"Trésorier",section:"Conseil d'administration",photo:"",facts:["Expert financier","Gestion budgétaire"]}
-  ],
-  partners:[
-    {id:1,name:"Municipalité de Saint-Liguori",type:"Partenaire",logo:""},
-    {id:2,name:"Partenaire communautaire",type:"Partenaire",logo:""},
-    {id:3,name:"Commanditaire local",type:"Commanditaire",logo:""}
-  ],
-  photoYears:[
-    {id:2026,year:2026,cover:"",events:[
-      {id:1,name:"Basketball Championship",date:"2026-09-20",description:"",photos:[
-        {id:1,src:"",caption:"Moment du match"},
-        {id:2,src:"",caption:"Les jeunes en action"}
-      ]},
-      {id:2,name:"Atelier Créatif",date:"2026-09-15",description:"",photos:[
-        {id:3,src:"",caption:"Création en cours"},
-        {id:4,src:"",caption:"Présentation des œuvres"}
-      ]}
-    ]},
-    {id:2025,year:2025,cover:"",events:[]}
-  ],
-  temoignages:[
-    {id:1,message:"Le Squat c'est comme une deuxième famille. J'y viens pour me détendre et être moi-même.",author:"Mégane"},
-    {id:2,message:"J'ai trouvé des amis ici et les intervenants vraiment à l'écoute. C'est cool!",author:"Xavier"},
-    {id:3,message:"C'est un espace où on peut faire plein d'activités différentes. Je ne m'ennuie jamais!",author:"Jasmine"},
-    {id:4,message:"Merci au Squat d'avoir créé ce lieu magique pour nous.",author:""},
-    {id:5,message:"Les jeudi soir c'est ma journée préférée de la semaine! On passe du bon temps ensemble.",author:"Félix"}
-  ],
-  ourStory:[
-    {id:1,date:"2016",description:"La mairesse Ghislaine Pomerleau contacte des citoyens afin de discuter d'un projet de Maison des jeunes. La municipalité offre un local gratuitement."},
-    {id:2,date:"1er décembre 2017",description:"Assemblée de fondation de la Maison des jeunes."},
-    {id:3,date:"2019–2020",description:"Reconnaissance comme organisme communautaire, puis obtention d'un financement récurrent à la mission."},
-    {id:4,date:"12 juin 2024",description:"Signature du bail pour le nouveau local à l'ancienne caserne, avec l'accompagnement de la municipalité."},
-    {id:5,date:"16 février 2026",description:"Emménagement dans le nouveau local après les travaux réalisés à l'hiver 2024–2025."}
-  ],
-  theme:'aucun'
+  // All default data should come from database (BD)
+  // Keep only empty defaults to prevent "flash" of temporary data
+  heroBanner: [],
+  news: [],
+  activitesRegulières: [],
+  programmation: { facebookLink: '', calendarImage: '' },
+  ressources: [],
+  events: [],
+  team: [],
+  partners: [],
+  photoYears: [],
+  temoignages: [],
+  ourStory: [],
+  theme: 'aucun'  // Only non-DB section with default
 };
 
 // In-memory data cache for public pages (loaded from API)
@@ -263,14 +201,15 @@ function applyThemeColors(){
 function renderNews(){
   const el=document.querySelector('#news-grid');
   if(!el)return;
-  el.innerHTML=getData('news').sort((a,b)=>b.date.localeCompare(a.date)).map(n=>`
+  const news=getData('news')||[];
+  el.innerHTML=news.length?news.sort((a,b)=>b.date.localeCompare(a.date)).map(n=>`
     <article class="card news-card">
       <span class="badge">Nouvelle</span>
       <h3>${esc(n.title)}</h3>
       <div class="news-meta">${new Date(n.date+'T12:00').toLocaleDateString('fr-CA',{year:'numeric',month:'long',day:'numeric'})}</div>
       <p>${esc(n.text)}</p>
     </article>
-  `).join('')
+  `).join(''):`<p style="text-align:center;color:#657089;padding:40px">Aucune nouvelle pour le moment.</p>`
 }
 
 function openImageModal(src){
@@ -357,6 +296,13 @@ function renderTeam(){
   };
   
   let html='';
+  const totalMembers = teamData.filter(m=>m.section==='Équipe').length + teamData.filter(m=>m.section==='Conseil d\'administration').length;
+  
+  if(totalMembers === 0){
+    el.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#657089;padding:40px">Aucun membre de l\'équipe pour le moment.</div>';
+    return;
+  }
+  
   Object.entries(sections).forEach(([section,members])=>{
     if(members.length>0){
       html+=`<h3 style="grid-column:1/-1;color:#0c255f;margin-top:24px;margin-bottom:0;padding-top:16px;border-top:2px solid #d4d4d4">${section}</h3>`;
@@ -377,7 +323,8 @@ function renderTeam(){
 function renderPartners(){
   const el=document.querySelector('#partners-list');
   if(!el)return;
-  el.innerHTML=getData('partners').map(p=>`
+  const partners=getData('partners')||[];
+  el.innerHTML=partners.length?partners.map(p=>`
     <div class="partner" style="text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center">
       ${p.logo?`<img src="${p.logo}" alt="${esc(p.name)}" style="height:80px;object-fit:contain">`:`<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:40px">🤝</div>`}
       <div>
@@ -385,31 +332,31 @@ function renderPartners(){
         <small style="display:block;color:#7d8799">${esc(p.type)}</small>
       </div>
     </div>
-  `).join('')
+  `).join(''):`<div style="text-align:center;color:#657089;padding:40px">Aucun partenaire pour le moment.</div>`
 }
 
 function renderOurStory(){
   const el=document.querySelector('.timeline');
   if(!el)return;
   const story=getData('ourStory')||[];
-  el.innerHTML=story.map(s=>`
+  el.innerHTML=story.length?story.map(s=>`
     <div class="timeline-item">
       <strong>${esc(s.date)}</strong><br>
       ${esc(s.description)}
     </div>
-  `).join('')
+  `).join(''):`<div style="text-align:center;color:#657089;padding:40px">Aucun historique pour le moment.</div>`
 }
 
 function renderPhotos(){
   const el=document.querySelector('#gallery');
   if(!el)return;
-  const years=getData('photoYears').sort((a,b)=>b.year-a.year);
-  el.innerHTML=years.map(y=>`
+  const years=(getData('photoYears')||[]).sort((a,b)=>b.year-a.year);
+  el.innerHTML=years.length?years.map(y=>`
     <figure style="cursor:pointer" onclick="location.href='photos-annee.html?year=${y.year}'">
       ${y.cover ? `<img src="${y.cover}" alt="Photos ${y.year}">` : `<div style="width:100%;aspect-ratio:16/9;background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:48px">📸</div>`}
       <figcaption>📁 ${y.year} (${y.events.length} événement${y.events.length!==1?'s':''})</figcaption>
     </figure>
-  `).join('')
+  `).join(''):`<div style="text-align:center;color:#657089;padding:40px">Aucune photo pour le moment.</div>`
 }
 
 function renderPhotosByYear(){
@@ -533,7 +480,7 @@ function setupNav(){
 function displayRandomTestimonial(){
   const container=document.getElementById('sticky-container');
   if(!container)return;
-  const temoignages=getData('temoignages');
+  const temoignages=getData('temoignages')||[];
   if(temoignages.length===0)return;
   const random=temoignages[Math.floor(Math.random()*temoignages.length)];
   container.innerHTML=`<div class="sticky-note"><p>${esc(random.message)}</p><div class="author">${random.author?'— '+esc(random.author):''}</div></div>`;
