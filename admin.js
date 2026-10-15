@@ -162,7 +162,7 @@ function getStorageColor(bytes){
   return '#ef4444';
 }
 
-function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.85){
+function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.95){
   return new Promise((resolve)=>{
     const img=new Image();
     img.onload=()=>{
@@ -1019,7 +1019,7 @@ function openEditor(k,id){
       reader.onload=async(evt)=>{
         // Resize and compress team member photo before storing
         const originalData=evt.target.result;
-        photoData=await resizeImage(originalData, 250, 300, 0.80);
+        photoData=await resizeImage(originalData, 250, 300, 0.90);
         previewImg.src=photoData;
         toggleZones();
         const photoSize=getDataUrlSize(photoData);
