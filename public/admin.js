@@ -218,13 +218,15 @@ function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.70){
 
 function renderStorageBar(bytes,label='',limit=100){
   const MB=bytes/1024/1024;
+  const KB=bytes/1024;
   const percent=Math.min((MB/limit)*100,100);
   const color=getStorageColor(bytes);
+  const sizeDisplay=MB<1?`${KB.toFixed(0)} KB`:`${MB.toFixed(1)} MB`;
   return `
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-size:12px;font-weight:600;color:#0c255f">${label}</span>
-        <span style="font-size:12px;color:#657089">${MB.toFixed(1)} MB</span>
+        <span style="font-size:12px;color:#657089">${sizeDisplay}</span>
       </div>
       <div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
         <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
