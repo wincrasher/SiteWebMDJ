@@ -29,52 +29,53 @@ async function initializeDataFromAPI() {
   // List of sections to load
   const sections = ['heroBanner', 'activitesRegulières', 'programmation', 'ressources', 'team', 'partners', 'photoYears', 'temoignages', 'ourStory', 'theme', 'news', 'events'];
   
-  for (const section of sections) {
+  // Load all sections in PARALLEL instead of sequentially
+  const promises = sections.map(section =>
+    fetch(`${API_URL}/${section}`)
+      .then(response => {
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+        return response.json().then(data => ({section, data, ok: true}));
+      })
+      .catch(err => {
+        console.warn(`⚠️ Failed to load ${section}: ${err.message}`);
+        return {section, data: null, ok: false};
+      })
+  );
+  
+  const results = await Promise.all(promises);
+  
+  results.forEach(({section, data, ok}) => {
     try {
-      const response = await fetch(`${API_URL}/${section}`);
-      if (response.ok) {
-        let data = await response.json();
-        
-        // Special handling for non-array sections
-        if (section === 'programmation') {
-          publicDataCache[section] = data || { facebookLink: '', calendarImage: '' };
-          console.log(`✅ Loaded ${section} (object)`);
-        } else if (section === 'theme') {
-          publicDataCache[section] = data || 'aucun';
-          console.log(`✅ Loaded ${section} (string)`);
-        } else {
-          // Regular array sections
-          if (data && typeof data === 'object' && !Array.isArray(data)) {
-            console.warn(`⚠️ ${section} returned object instead of array`);
-            data = [];
-          }
-          publicDataCache[section] = Array.isArray(data) ? data : (data || []);
-          if (section === 'photoYears') {
-            console.log(`✅ Loaded photoYears: ${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 0} years`);
-            if (Array.isArray(publicDataCache[section])) {
-              publicDataCache[section].forEach(year => {
-                console.log(`   - ${year.year}: ${year.events ? year.events.length : 0} events, cover: ${year.cover}`);
-              });
-            }
-          } else {
-            console.log(`✅ Loaded ${section} (${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 'empty'})`);
-          }
-        }
+      // Special handling for non-array sections
+      if (section === 'programmation') {
+        publicDataCache[section] = data || { facebookLink: '', calendarImage: '' };
+        console.log(`✅ Loaded ${section} (object)`);
+      } else if (section === 'theme') {
+        publicDataCache[section] = data || 'aucun';
+        console.log(`✅ Loaded ${section} (string)`);
       } else {
-        console.warn(`⚠️ Failed to load ${section} (status ${response.status}), using defaults`);
-        if (section === 'photoYears') {
-          console.warn(`  📷 photoYears defaults: ${defaults[section] ? defaults[section].length : 0} years`);
+        // Regular array sections
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          console.warn(`⚠️ ${section} returned object instead of array`);
+          data = [];
         }
-        publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
+        publicDataCache[section] = Array.isArray(data) ? data : (data || []);
+        if (section === 'photoYears') {
+          console.log(`✅ Loaded photoYears: ${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 0} years`);
+          if (Array.isArray(publicDataCache[section])) {
+            publicDataCache[section].forEach(year => {
+              console.log(`   - ${year.year}: ${year.events ? year.events.length : 0} events, cover: ${year.cover}`);
+            });
+          }
+        } else {
+          console.log(`✅ Loaded ${section} (${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 'empty'})`);
+        }
       }
     } catch (err) {
-      console.error(`❌ Failed to fetch ${section}:`, err.message);
-      if (section === 'photoYears') {
-        console.error(`  📷 photoYears fetch error, will use defaults (${defaults[section] ? defaults[section].length : 0} years)`);
-      }
+      console.error(`❌ Error processing ${section}:`, err.message);
       publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
     }
-  }
+  });
   
   // Load settings
   try {
