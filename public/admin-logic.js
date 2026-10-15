@@ -77,7 +77,10 @@ async function initializeDataFromAPI() {
         publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
       }
     } catch (err) {
-      console.warn(`Failed to fetch ${section}:`, err.message);
+      console.error(`❌ Failed to fetch ${section}:`, err.message);
+      if (section === 'photoYears') {
+        console.error(`  📷 photoYears fetch error, will use defaults (${defaults[section] ? defaults[section].length : 0} years)`);
+      }
       publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
     }
   }
