@@ -320,8 +320,18 @@ app.post('/api/:section', async (req, res) => {
             author: String(item.author || '').trim()
           };
           
+          // Remove any non-serializable values
+          for (const [key, val] of Object.entries(cleaned)) {
+            if (val === null || val === undefined) {
+              cleaned[key] = '';
+            } else if (typeof val !== 'string' && typeof val !== 'number' && typeof val !== 'boolean') {
+              console.log(`   Item ${idx}: Field '${key}' has type ${typeof val}, converting to string`);
+              cleaned[key] = String(val);
+            }
+          }
+          
           // Log any changes
-          if (cleaned.message !== item.message || cleaned.author !== item.author) {
+          if (JSON.stringify(cleaned) !== JSON.stringify(item)) {
             console.log(`   Item ${idx}: Sanitized - message: "${cleaned.message.slice(0, 40)}...", author: "${cleaned.author}"`);
           }
           
@@ -341,8 +351,7 @@ app.post('/api/:section', async (req, res) => {
     }
     
     // Save the data
-    // ✅ FIX: Send object directly to JSONB column, NOT stringified
-    // PostgreSQL driver will handle JSON conversion automatically
+    // For JSONB columns, we need to send the data in a way PostgreSQL can parse
     console.log(`\n💾 Saving to database...`);
     console.log(`   Section: ${section}`);
     console.log(`   Data type: ${typeof data}, Is array: ${Array.isArray(data)}`);
@@ -351,9 +360,13 @@ app.post('/api/:section', async (req, res) => {
     }
     
     try {
+      // For reliability with JSONB, stringify the data before sending to pg
+      // The pg driver will handle proper JSON conversion
+      const dataToSave = typeof data === 'string' ? data : JSON.stringify(data);
+      
       const queryResult = await pool.query(
-        'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-        [`squat_${section}`, data]  // Send object directly, not serialized string
+        'INSERT INTO site_data (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO UPDATE SET value = $2::jsonb, updated_at = CURRENT_TIMESTAMP',
+        [`squat_${section}`, dataToSave]  // Send as stringified JSON for explicit JSONB parsing
       );
       console.log(`✅ Database save successful. Rows affected: ${queryResult.rowCount}`);
     } catch (dbErr) {
