@@ -119,15 +119,51 @@ app.get('/api/:section', async (req, res) => {
 app.post('/api/:section', async (req, res) => {
   try {
     const { section } = req.params;
-    const data = req.body;
+    let data = req.body;
     
+    // Special handling for team: if single object, upsert into array
+    if (section === 'team' && data && !Array.isArray(data)) {
+      // Validate required fields for single member
+      if (!data.name || !data.name.trim()) {
+        return res.status(400).json({ error: 'Le nom est obligatoire' });
+      }
+      if (!data.role || !data.role.trim()) {
+        return res.status(400).json({ error: 'Le rôle est obligatoire' });
+      }
+      if (!data.photo) {
+        return res.status(400).json({ error: 'Une photo est obligatoire' });
+      }
+      
+      console.log(`📝 Upserting single team member: ${data.name}`);
+      
+      // Fetch current team array
+      const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
+      let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
+      
+      // Validate array
+      if (!Array.isArray(arr)) arr = [];
+      
+      // Upsert: find and update, or add new
+      const ix = arr.findIndex(m => m.id === data.id);
+      if (ix >= 0) {
+        console.log(`✏️ Updating existing member: ${data.name}`);
+        arr[ix] = data;
+      } else {
+        console.log(`✨ Adding new member: ${data.name}`);
+        arr.push(data);
+      }
+      
+      data = arr; // Set data to updated array for saving
+    }
+    
+    // Save the data
     await pool.query(
       'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
       [`squat_${section}`, JSON.stringify(data)]
     );
     
     console.log(`✅ POST /api/${section} saved successfully`);
-    res.json({ success: true, message: `${section} saved` });
+    res.json({ success: true, message: `${section} saved`, data: data });
   } catch (err) {
     console.error(`❌ POST /api/${req.params.section} error:`, err.message);
     res.status(500).json({ error: err.message });

@@ -1042,7 +1042,7 @@ function openEditor(k,id){
       reader.readAsDataURL(file);
     }
     
-    document.querySelector('#edit-form').onsubmit=(ev)=>{
+    document.querySelector('#edit-form').onsubmit=async(ev)=>{
       ev.preventDefault();
       const fd=new FormData(ev.target);
       D[k].fields.forEach(([name])=>{
@@ -1051,12 +1051,50 @@ function openEditor(k,id){
         obj[name]=v
       });
       if(photoData)obj.photo=photoData;
-      const arr=load(k);
-      const ix=arr.findIndex(x=>x.id===obj.id);
-      ix>=0?arr[ix]=obj:arr.push(obj);
-      save(k,arr);
+      
+      // Validate required fields for team members
+      if(!obj.name||!obj.name.trim()){
+        alert('❌ Le nom est obligatoire');
+        return;
+      }
+      if(!obj.photo){
+        alert('❌ Une photo est obligatoire');
+        return;
+      }
+      if(!obj.role||!obj.role.trim()){
+        alert('❌ Le rôle est obligatoire');
+        return;
+      }
+      
+      console.log('💾 Saving team member:', obj.name);
+      
+      // Send only the member object (not the entire array)
+      const response=await fetch(`${API_URL}/team`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(obj)
+      });
+      
+      if(!response.ok){
+        const error=await response.json();
+        alert(`❌ ${error.error||'Erreur lors de la sauvegarde'}`);
+        return;
+      }
+      
+      // Refetch all team members to update cache and display
+      console.log('🔄 Refetching team data...');
+      const teamData=await fetch(`${API_URL}/team`).then(r=>r.json());
+      dataCache.team=teamData;
+      
       closeModal();
-      renderPanel(k)
+      renderPanel(k);
+      
+      // Show success message
+      const msg=document.createElement('div');
+      msg.style.cssText='position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:6px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+      msg.textContent='✅ Membre sauvegardé!';
+      document.body.appendChild(msg);
+      setTimeout(()=>msg.remove(),3000);
     }
   }else if(k==='ressources'){
     // Handle ressources logo upload
