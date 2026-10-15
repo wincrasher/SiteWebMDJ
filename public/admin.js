@@ -1,4 +1,4 @@
-const K=['heroBanner','activitesRegulières','programmation','ressources','team','partners','photoYears','temoignages','ourStory','theme'];
+const K=['heroBanner','activitesRegulières','programmation','ressources','team','partners','photoYears','temoignages','ourStory','theme','news','events'];
 const D={
   heroBanner:{label:'Page d\'accueil',fields:[['caption','Légende','text']]},
   activitesRegulières:{label:'Activités régulières',fields:[['name','Nom activité','text'],['desc','Description','textarea']]},
