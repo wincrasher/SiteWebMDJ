@@ -100,6 +100,20 @@ async function save(k, v) {
     dataCache[k] = v;
     console.log(`💾 Saving ${k} to database...`, v);
     
+    // Extra diagnostics for temoignages
+    if (k === 'temoignages') {
+      console.log(`\n📋 Temoignages save details:`);
+      console.log(`   Type: ${typeof v}, Is array: ${Array.isArray(v)}`);
+      if (Array.isArray(v)) {
+        console.log(`   Length: ${v.length}`);
+        v.forEach((item, idx) => {
+          console.log(`   Item ${idx}: id=${item.id}, message="${String(item.message || '').slice(0, 50)}...", author="${item.author || '(anonymous)'}"`);
+          console.log(`     Keys: ${Object.keys(item).join(', ')}`);
+        });
+      }
+      console.log(`   JSON size: ${JSON.stringify(v).length} bytes\n`);
+    }
+    
     // Send to database (wait for response)
     const response = await fetch(`${API_URL}/${k}`, {
       method: 'POST',

@@ -288,6 +288,21 @@ app.post('/api/:section', async (req, res) => {
       serialized = JSON.stringify(data);
       console.log(`\n💾 Data to save: ${serialized.length} bytes`);
       console.log(`✅ Data is valid JSON`);
+      
+      // Extra logging for testimonials
+      if (section === 'temoignages') {
+        console.log(`\n📋 Testimonials data details:`);
+        console.log(`   Is array: ${Array.isArray(data)}`);
+        console.log(`   Length: ${Array.isArray(data) ? data.length : 'N/A'}`);
+        if (Array.isArray(data) && data.length > 0) {
+          console.log(`   First item keys: ${Object.keys(data[0]).join(', ')}`);
+          console.log(`   First item: ${JSON.stringify(data[0])}`);
+          // Check for problematic values
+          for (const [key, val] of Object.entries(data[0])) {
+            console.log(`     - ${key}: ${typeof val} = ${JSON.stringify(val)}`);
+          }
+        }
+      }
     } catch (serializeErr) {
       console.error('❌ Data serialization failed:', serializeErr.message);
       console.error('Data type:', typeof data, 'Is array:', Array.isArray(data));
@@ -301,10 +316,22 @@ app.post('/api/:section', async (req, res) => {
     // ✅ FIX: Send object directly to JSONB column, NOT stringified
     // PostgreSQL driver will handle JSON conversion automatically
     console.log(`\n💾 Saving to database...`);
-    await pool.query(
-      'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-      [`squat_${section}`, data]  // Send object directly, not serialized string
-    );
+    try {
+      await pool.query(
+        'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+        [`squat_${section}`, data]  // Send object directly, not serialized string
+      );
+    } catch (dbErr) {
+      if (section === 'temoignages') {
+        console.error(`\n❌ Database save failed for ${section}`);
+        console.error('Error type:', dbErr.code || dbErr.name);
+        console.error('Error message:', dbErr.message);
+        if (dbErr.detail) console.error('Detail:', dbErr.detail);
+        if (dbErr.hint) console.error('Hint:', dbErr.hint);
+        console.error('Data being saved:', JSON.stringify(data));
+      }
+      throw dbErr;
+    }
     
     console.log(`✅ POST /api/${section} saved successfully`);
     console.log(`${'='.repeat(80)}\n`);
