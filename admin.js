@@ -26,6 +26,9 @@ async function initializeFromDatabase() {
       if (response.ok) {
         dataCache[section] = await response.json();
         console.log(`✅ Loaded ${section}`);
+      } else {
+        console.warn(`⚠️ Failed to load ${section}: HTTP ${response.status}`);
+        dataCache[section] = [];
       }
     } catch (err) {
       console.warn(`Failed to load ${section}:`, err.message);
@@ -54,12 +57,16 @@ async function initializeFromDatabase() {
   }
   
   console.log('✅ Database initialization complete');
-  applyThemeColors();
+  console.log('📊 Cache state:', dataCache);
 }
 
 // Get data from memory cache
 function load(k) {
-  return dataCache[k] || (Array.isArray(dataCache[k]) ? [] : {});
+  if (dataCache[k] !== undefined) {
+    return dataCache[k];
+  }
+  // Return empty array or object based on expected type
+  return Array.isArray(dataCache[k]) ? [] : (k === 'theme' || k === 'heroBannerDuration' ? 'aucun' : []);
 }
 
 // Save data to database AND update cache
@@ -1843,25 +1850,39 @@ async function updateStorageIndicator(){
 }
 
 function start(){
-  if(!logged())return showLogin();
+  console.log('🚀 Admin panel starting...');
+  if(!logged()){
+    console.log('❌ Not logged in');
+    return showLogin();
+  }
+  
+  console.log('✅ User logged in, initializing database...');
   
   // Load all data from database then render
-  initializeFromDatabase().then(() => {
-    K.forEach(renderPanel);
-    document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
-    updateStorageIndicator();
-    setInterval(updateStorageIndicator,1000);
-    switchPanel('heroBanner');
-  }).catch(err => {
-    console.error('Init failed:', err);
-    // Still render even if database fails
-    applyThemeColors();
-    K.forEach(renderPanel);
-    document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
-    updateStorageIndicator();
-    setInterval(updateStorageIndicator,1000);
-    switchPanel('heroBanner');
-  });
+  initializeFromDatabase()
+    .then(() => {
+      console.log('📊 Rendering panels...');
+      try {
+        applyThemeColors();
+        K.forEach(k => {
+          console.log(`📋 Rendering panel: ${k}`);
+          renderPanel(k);
+        });
+        document.querySelectorAll('.admin-nav button[data-k]').forEach(b => {
+          b.onclick = () => switchPanel(b.dataset.k);
+        });
+        updateStorageIndicator();
+        setInterval(updateStorageIndicator, 1000);
+        switchPanel('heroBanner');
+        console.log('✅ Admin ready');
+      } catch (err) {
+        console.error('❌ Error during render:', err);
+      }
+    })
+    .catch(err => {
+      console.error('❌ Init failed:', err);
+      alert('⚠️ Erreur lors du chargement des données. Vérifiez la console (F12) pour plus d\'informations.');
+    });
 }
 
 document.addEventListener('DOMContentLoaded',start)
