@@ -1220,7 +1220,9 @@ function openEventEditor(k,yearId,eventId){
   const yearData=years.find(y=>y.id===yearId);
   if(!yearData)return;
   
-  const events=yearData.events||[];
+  // Ensure events array exists
+  if(!yearData.events)yearData.events=[];
+  const events=yearData.events;
   let eventObj=eventId?events.find(e=>e.id===eventId):null;
   const isNew=!eventId;
   
