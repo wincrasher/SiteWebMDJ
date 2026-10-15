@@ -26,21 +26,30 @@ async function initializeFromDatabase() {
       if (response.ok) {
         let data = await response.json();
         
-        // Ensure arrays are arrays, not objects
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          console.warn(`⚠️ ${section} returned object instead of array, converting...`);
-          data = [];
+        // Special handling for non-array sections
+        if (section === 'programmation' || section === 'theme') {
+          // These are objects, keep as-is
+          dataCache[section] = data || (section === 'theme' ? 'aucun' : { facebookLink: '', calendarImage: '' });
+          console.log(`✅ Loaded ${section} (object)`);
+        } else if (section === 'heroBannerDuration') {
+          dataCache[section] = data || 5;
+          console.log(`✅ Loaded ${section} (setting)`);
+        } else {
+          // Regular array sections
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.warn(`⚠️ ${section} returned object instead of array, converting...`);
+            data = [];
+          }
+          dataCache[section] = data || [];
+          console.log(`✅ Loaded ${section} (${Array.isArray(data) ? data.length : 'empty'})`);
         }
-        
-        dataCache[section] = data || [];
-        console.log(`✅ Loaded ${section} (${Array.isArray(data) ? data.length : 'empty'})`);
       } else {
         console.warn(`⚠️ Failed to load ${section}: HTTP ${response.status}`);
-        dataCache[section] = [];
+        dataCache[section] = section === 'theme' ? 'aucun' : (section === 'programmation' ? { facebookLink: '', calendarImage: '' } : []);
       }
     } catch (err) {
       console.warn(`Failed to load ${section}:`, err.message);
-      dataCache[section] = [];
+      dataCache[section] = section === 'theme' ? 'aucun' : (section === 'programmation' ? { facebookLink: '', calendarImage: '' } : []);
     }
   }
   
@@ -72,12 +81,12 @@ async function initializeFromDatabase() {
 function load(k) {
   const value = dataCache[k];
   
-  // If not loaded yet, return safe default
+  // If not loaded yet, return safe default based on section type
   if (value === undefined) {
-    // Most sections are arrays, except theme and settings
     if (k === 'theme') return 'aucun';
     if (k === 'heroBannerDuration') return 5;
-    return [];
+    if (k === 'programmation') return { facebookLink: '', calendarImage: '' };
+    return []; // Most sections are arrays
   }
   
   // Return the cached data

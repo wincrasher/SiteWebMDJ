@@ -77,7 +77,74 @@ const defaults = {
   theme:'aucun'
 };
 
-function getData(key){const d=localStorage.getItem('squat_'+key);return d?JSON.parse(d):defaults[key]}
+// In-memory data cache for public pages (loaded from API)
+const publicDataCache = {};
+
+// Load all data from API once at page startup
+async function initializeDataFromAPI() {
+  console.log('📡 Loading data from API...');
+  const API_URL = window.location.origin + '/api';
+  
+  // List of sections to load
+  const sections = ['heroBanner', 'activitesRegulières', 'programmation', 'ressources', 'team', 'partners', 'photoYears', 'temoignages', 'ourStory', 'theme', 'news', 'events'];
+  
+  for (const section of sections) {
+    try {
+      const response = await fetch(`${API_URL}/${section}`);
+      if (response.ok) {
+        let data = await response.json();
+        
+        // Special handling for non-array sections
+        if (section === 'programmation') {
+          publicDataCache[section] = data || { facebookLink: '', calendarImage: '' };
+          console.log(`✅ Loaded ${section} (object)`);
+        } else if (section === 'theme') {
+          publicDataCache[section] = data || 'aucun';
+          console.log(`✅ Loaded ${section} (string)`);
+        } else {
+          // Regular array sections
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.warn(`⚠️ ${section} returned object instead of array`);
+            data = [];
+          }
+          publicDataCache[section] = Array.isArray(data) ? data : (data || []);
+          console.log(`✅ Loaded ${section} (${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 'empty'})`);
+        }
+      } else {
+        console.warn(`⚠️ Failed to load ${section}, using defaults`);
+        publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch ${section}:`, err.message);
+      publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
+    }
+  }
+  
+  // Load settings
+  try {
+    const response = await fetch(`${API_URL}/heroBannerDuration`);
+    if (response.ok) {
+      publicDataCache.heroBannerDuration = await response.json();
+    }
+  } catch (err) {
+    publicDataCache.heroBannerDuration = 5;
+  }
+  
+  console.log('✅ API initialization complete');
+  console.log('📊 Public cache:', publicDataCache);
+}
+
+function getData(key) {
+  const value = publicDataCache[key];
+  
+  // If loaded, return from cache
+  if (value !== undefined) {
+    return value;
+  }
+  
+  // Fallback to defaults  
+  return defaults[key] || (key === 'programmation' ? { facebookLink: '', calendarImage: '' } : (key === 'theme' ? 'aucun' : []));
+}
 function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 const themeEmojis={
@@ -473,11 +540,25 @@ function displayRandomTestimonial(){
   container.innerHTML=`<div class="sticky-note"><p>${esc(random.message)}</p><div class="author">${random.author?'— '+esc(random.author):''}</div></div>`;
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  renderNews();
-  renderEvents();
-  renderTeam();
-  renderPartners();
-  renderPhotos();
-  setupNav();
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🌐 Page loaded, initializing data...');
+  
+  // Load all data from API first
+  await initializeDataFromAPI();
+  
+  // Then render all sections
+  try {
+    renderNews();
+    renderEvents();
+    renderTeam();
+    renderPartners();
+    renderPhotos();
+    displayThemeDecorations();
+    applyThemeIcons(getData('theme'));
+    displayRandomTestimonial();
+    setupNav();
+    console.log('✅ Page render complete');
+  } catch (err) {
+    console.error('❌ Error rendering page:', err);
+  }
 });

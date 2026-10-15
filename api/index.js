@@ -97,8 +97,17 @@ app.get('/api/:section', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0].value);
     } else {
-      // Return empty array instead of object - most sections are arrays
-      res.json([]);
+      // Return appropriate empty default based on section type
+      if (section === 'programmation') {
+        res.json({ facebookLink: '', calendarImage: '' });
+      } else if (section === 'theme') {
+        res.json('aucun');
+      } else if (section === 'heroBannerDuration') {
+        res.json(5);
+      } else {
+        // Most sections are arrays
+        res.json([]);
+      }
     }
   } catch (err) {
     console.error(`❌ GET /api/${req.params.section} error:`, err.message);
