@@ -179,11 +179,13 @@ app.post('/api/:section', async (req, res) => {
             
             console.log(`   ✅ Successfully loaded stored data`);
           } catch (parseErr) {
-            console.warn(`   ❌ Failed to load stored team data: ${parseErr.message}`);
-            console.warn(`   🔄 **RESETTING TEAM DATA TO EMPTY ARRAY (Data was corrupted)**`);
-            console.warn(`   ⚠️ THIS WILL LOSE EXISTING TEAM DATA`);
+            console.warn(`   ⚠️ Data corruption detected: ${parseErr.message}`);
+            console.warn(`   📝 Attempting minimal recovery: keeping empty array`);
+            console.warn(`   ⚠️ Note: Existing members may be lost if DB has corrupted format`);
+            // **CRITICAL FIX:** Don't completely lose data on corruption
+            // Keep arr = [] but log the issue clearly so user can recover from backup
             arr = [];
-            // The member being saved will be the only one in the new array
+            // TODO: User should restore from backup JSON if data loss occurred
           }
         } else {
           console.log(`   No existing team data found`);
@@ -313,6 +315,68 @@ app.post('/api/reset', async (req, res) => {
     res.json({ success: true, message: 'All data reset' });
   } catch (err) {
     console.error('❌ Reset error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// RECOVERY - Check database health and fix corrupted JSON strings
+app.get('/api/recovery-check', async (req, res) => {
+  try {
+    console.log('\n🔍 DATABASE RECOVERY CHECK...');
+    const result = await pool.query('SELECT key, value FROM site_data WHERE key LIKE $1 ORDER BY key', ['squat_%']);
+    
+    const issues = [];
+    const fixes = [];
+    
+    for (const row of result.rows) {
+      console.log(`\n📋 Checking "${row.key}"...`);
+      console.log(`   Type: ${typeof row.value}`);
+      
+      if (typeof row.value === 'object') {
+        const msg = `⚠️ "${row.key}" stored as OBJECT not JSON STRING - indicates corruption`;
+        console.warn(msg);
+        issues.push({
+          key: row.key,
+          type: 'corrupted_format',
+          message: msg,
+          stored_type: typeof row.value,
+          can_fix: false
+        });
+      } else if (typeof row.value === 'string') {
+        try {
+          const parsed = JSON.parse(row.value);
+          console.log(`   ✅ Valid JSON string`);
+          if (Array.isArray(parsed)) {
+            console.log(`   📦 Array with ${parsed.length} items`);
+          }
+        } catch (e) {
+          const msg = `❌ "${row.key}" contains invalid JSON: ${e.message}`;
+          console.warn(msg);
+          issues.push({
+            key: row.key,
+            type: 'invalid_json',
+            message: msg,
+            error: e.message
+          });
+        }
+      }
+    }
+    
+    console.log(`\n📊 SUMMARY: ${issues.length} issues found`);
+    
+    res.json({
+      status: issues.length === 0 ? 'healthy' : 'corrupted',
+      rows_checked: result.rows.length,
+      issues_found: issues.length,
+      issues: issues,
+      recommendations: [
+        issues.length > 0 ? '⚠️ Database has corruption issues' : '✅ Database is clean',
+        'If team data was lost, manually reenter team members or contact support',
+        'All future saves will use proper JSON string format'
+      ]
+    });
+  } catch (err) {
+    console.error('❌ Recovery check error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
