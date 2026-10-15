@@ -163,23 +163,33 @@ app.post('/api/:section', async (req, res) => {
           try {
             const stored = result.rows[0].value;
             console.log(`   Stored data type: ${typeof stored}`);
-            console.log(`   Stored data (first 100 chars): ${String(stored).substring(0, 100)}`);
             
-            // Try to parse the stored value
-            arr = JSON.parse(stored);
-            console.log(`   ✅ Successfully parsed stored data`);
+            // Handle both cases: if already an object (parsed) or if it's a string (needs parsing)
+            if (typeof stored === 'object' && stored !== null) {
+              console.log(`   📦 Data is already an object (parsed)`);
+              arr = Array.isArray(stored) ? stored : [];
+            } else if (typeof stored === 'string') {
+              console.log(`   📝 Data is a string, parsing...`);
+              console.log(`   First 100 chars: ${stored.substring(0, 100)}`);
+              arr = JSON.parse(stored);
+            } else {
+              console.warn(`   ⚠️ Unknown data type: ${typeof stored}`);
+              arr = [];
+            }
+            
+            console.log(`   ✅ Successfully loaded stored data`);
           } catch (parseErr) {
-            console.warn(`   ❌ Failed to parse stored team data: ${parseErr.message}`);
-            console.warn(`   🔄 Resetting team data to empty array`);
+            console.warn(`   ❌ Failed to load stored team data: ${parseErr.message}`);
+            console.warn(`   🔄 **RESETTING TEAM DATA TO EMPTY ARRAY (Data was corrupted)**`);
+            console.warn(`   ⚠️ THIS WILL LOSE EXISTING TEAM DATA`);
             arr = [];
-            // We'll overwrite the corrupted data when we save
+            // The member being saved will be the only one in the new array
           }
         } else {
           console.log(`   No existing team data found`);
         }
         
-        console.log(`   Found ${result.rows.length} row(s)`);
-        console.log(`   Array has ${arr.length} members`);
+        console.log(`   Array has ${arr.length} members after loading`);
         
         // Validate array
         if (!Array.isArray(arr)) {
@@ -197,7 +207,7 @@ app.post('/api/:section', async (req, res) => {
         console.log(`   Looking for id: ${data.id}`);
         console.log(`   Found at index: ${ix}`);
         console.log(`   Array size: ${arr.length}`);
-        console.log(`   Is new member: ${isNewMember ? 'YES' : 'NO'} (based on id < 1000: ${data.id < 1000})`);
+        console.log(`   Is new member: ${isNewMember ? 'YES' : 'NO'} (id is ${data.id < 1000 ? 'small' : 'large'})`);
         
         // Photo is required ONLY for truly new members
         // If id < 1000, it's likely an existing member from initial data, photo optional
@@ -215,53 +225,32 @@ app.post('/api/:section', async (req, res) => {
         if (data.photo) {
           console.log(`\n📷 Photo provided: ${data.photo.length} bytes`);
         } else {
-          console.log(`\n📷 No photo in payload (editing existing member)`);
+          console.log(`\n📷 No photo in payload`);
         }
         
         // Upsert: update existing or add new
         if (ix >= 0) {
-          console.log(`\n✏️ UPDATING existing member at index ${ix}`);
+          console.log(`\n✏️ UPDATING existing member at index ${ix}: ${data.name}`);
           const existingMember = arr[ix];
           
-          console.log(`   Current photo size: ${existingMember.photo ? existingMember.photo.length : 0} bytes`);
+          console.log(`   Existing photo size: ${existingMember.photo ? existingMember.photo.length : 0} bytes`);
           
           // If photo is not in payload, preserve the existing one
           if (!data.photo && existingMember && existingMember.photo) {
             data.photo = existingMember.photo;
             console.log(`   ✅ Preserved existing photo (${existingMember.photo.length} bytes)`);
           } else if (!data.photo) {
-            console.log(`   ⚠️ No photo to preserve`);
+            console.log(`   ℹ️ No photo to preserve`);
           }
           
-          // Ensure all required fields are strings (not undefined)
-          data.name = String(data.name || '');
-          data.role = String(data.role || '');
-          data.gender = String(data.gender || 'Homme');
-          data.section = String(data.section || 'Équipe');
-          data.photo = String(data.photo || '');
-          data.facts = Array.isArray(data.facts) ? data.facts : [];
+          // Merge with existing data to preserve fields
+          const merged = { ...existingMember, ...data };
+          console.log(`   ✏️ Merged with existing member data`);
           
-          console.log(`   After normalization:`);
-          console.log(`   - name: "${data.name}"`);
-          console.log(`   - photo: ${data.photo ? `${data.photo.length} bytes` : 'EMPTY'}`);
-          
-          arr[ix] = data;
-        } else if (ix < 0 && arr.length === 0 && data.id && data.id < 1000) {
-          // Special case: Array was corrupted and reset, but member id < 1000 (existing member)
-          console.log(`\n📝 RECOVERING existing member (array was corrupted, id < 1000): ${data.name}`);
-          console.log(`   Treating as edit, not new member`);
-          
-          // Normalize fields
-          data.name = String(data.name || '');
-          data.role = String(data.role || '');
-          data.gender = String(data.gender || 'Homme');
-          data.section = String(data.section || 'Équipe');
-          data.photo = String(data.photo || '');
-          data.facts = Array.isArray(data.facts) ? data.facts : [];
-          
-          arr.push(data);
+          arr[ix] = merged;
         } else {
-          console.log(`\n✨ ADDING new member to array`);
+          console.log(`\n➕ ADDING member: ${data.name}`);
+          
           // Ensure all fields are properly typed
           data.name = String(data.name || '');
           data.role = String(data.role || '');
@@ -271,7 +260,7 @@ app.post('/api/:section', async (req, res) => {
           data.facts = Array.isArray(data.facts) ? data.facts : [];
           
           arr.push(data);
-          console.log(`   New array size: ${arr.length}`);
+          console.log(`   Array now has ${arr.length} members`);
         }
         
         data = arr; // Set data to updated array for saving
