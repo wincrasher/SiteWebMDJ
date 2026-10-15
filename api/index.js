@@ -125,83 +125,117 @@ app.post('/api/:section', async (req, res) => {
     
     // Special handling for team: if single object, upsert into array
     if (section === 'team' && data && !Array.isArray(data)) {
-      console.log('👤 Processing single team member:', data.name);
-      
-      // Validate required fields for single member
-      if (!data.name || !data.name.trim()) {
-        console.warn('❌ Validation failed: missing name');
-        return res.status(400).json({ error: 'Le nom est obligatoire' });
-      }
-      if (!data.role || !data.role.trim()) {
-        console.warn('❌ Validation failed: missing role');
-        return res.status(400).json({ error: 'Le rôle est obligatoire' });
-      }
-      
-      // Fetch current team array FIRST to detect if new or existing
-      const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
-      let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
-      
-      // Validate array
-      if (!Array.isArray(arr)) arr = [];
-      
-      // Check if member already exists
-      const ix = arr.findIndex(m => m.id === data.id);
-      const isNewMember = ix < 0; // If not found in array, it's new
-      
-      console.log(`🔍 Member lookup: id=${data.id}, found=${ix >= 0 ? 'yes' : 'no'}, isNew=${isNewMember}`);
-      
-      // Photo is required ONLY for new members
-      if (isNewMember && !data.photo) {
-        console.warn('❌ Validation failed: new member without photo');
-        return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
-      }
-      
-      // Validate photo is a string if present
-      if (data.photo && typeof data.photo !== 'string') {
-        console.warn('❌ Validation failed: photo is not a string, type:', typeof data.photo);
-        return res.status(400).json({ error: 'Photo must be a base64 string' });
-      }
-      
-      if (data.photo) {
-        console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
-      } else {
-        console.log(`📝 Team member ${data.name} - no photo in payload (editing)`);
-      }
-      
-      // Upsert: update existing or add new
-      if (ix >= 0) {
-        console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
-        // If photo is not in payload, preserve the existing one
-        if (!data.photo) {
-          data.photo = arr[ix].photo;
-          console.log(`📸 Preserved existing photo (${arr[ix].photo ? arr[ix].photo.length : 0} bytes)`);
+      try {
+        console.log('👤 Processing single team member:', data.name);
+        
+        // Validate required fields for single member
+        if (!data.name || !data.name.trim()) {
+          console.warn('❌ Validation failed: missing name');
+          return res.status(400).json({ error: 'Le nom est obligatoire' });
         }
-        arr[ix] = data;
-      } else {
-        console.log(`✨ Adding new member to array`);
-        arr.push(data);
+        if (!data.role || !data.role.trim()) {
+          console.warn('❌ Validation failed: missing role');
+          return res.status(400).json({ error: 'Le rôle est obligatoire' });
+        }
+        
+        // Fetch current team array FIRST to detect if new or existing
+        const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
+        let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
+        
+        // Validate array
+        if (!Array.isArray(arr)) {
+          console.warn('⚠️ Stored team data is not an array, resetting...');
+          arr = [];
+        }
+        
+        // Check if member already exists
+        const ix = arr.findIndex(m => m && m.id === data.id);
+        const isNewMember = ix < 0; // If not found in array, it's new
+        
+        console.log(`🔍 Member lookup: id=${data.id}, found=${ix >= 0 ? 'yes' : 'no'}, isNew=${isNewMember}`);
+        
+        // Photo is required ONLY for new members
+        if (isNewMember && !data.photo) {
+          console.warn('❌ Validation failed: new member without photo');
+          return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
+        }
+        
+        // Validate photo is a string if present
+        if (data.photo && typeof data.photo !== 'string') {
+          console.warn('❌ Validation failed: photo is not a string, type:', typeof data.photo);
+          return res.status(400).json({ error: 'Photo must be a base64 string' });
+        }
+        
+        if (data.photo) {
+          console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
+        } else {
+          console.log(`📝 Team member ${data.name} - no photo in payload (editing)`);
+        }
+        
+        // Upsert: update existing or add new
+        if (ix >= 0) {
+          console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
+          const existingMember = arr[ix];
+          
+          // If photo is not in payload, preserve the existing one
+          if (!data.photo && existingMember && existingMember.photo) {
+            data.photo = existingMember.photo;
+            console.log(`📸 Preserved existing photo (${existingMember.photo.length} bytes)`);
+          }
+          
+          // Ensure all required fields are strings (not undefined)
+          data.name = String(data.name || '');
+          data.role = String(data.role || '');
+          data.gender = String(data.gender || 'Homme');
+          data.section = String(data.section || 'Équipe');
+          data.photo = String(data.photo || '');
+          if (data.facts && !Array.isArray(data.facts)) {
+            data.facts = Array.isArray(data.facts) ? data.facts : [];
+          }
+          
+          arr[ix] = data;
+        } else {
+          console.log(`✨ Adding new member to array`);
+          // Ensure all fields are properly typed
+          data.name = String(data.name || '');
+          data.role = String(data.role || '');
+          data.gender = String(data.gender || 'Homme');
+          data.section = String(data.section || 'Équipe');
+          data.photo = String(data.photo || '');
+          data.facts = Array.isArray(data.facts) ? data.facts : [];
+          
+          arr.push(data);
+        }
+        
+        data = arr; // Set data to updated array for saving
+      } catch (processErr) {
+        console.error('❌ Error processing team member:', processErr.message);
+        return res.status(400).json({ error: 'Error processing team member: ' + processErr.message });
       }
-      
-      data = arr; // Set data to updated array for saving
     }
     
     // Verify data is serializable before saving
+    let serialized = '';
     try {
-      const testSerialize = JSON.stringify(data);
-      console.log(`✅ Data is valid JSON, size: ${testSerialize.length} bytes`);
+      serialized = JSON.stringify(data);
+      console.log(`✅ Data is valid JSON, size: ${serialized.length} bytes`);
     } catch (serializeErr) {
       console.error('❌ Data serialization failed:', serializeErr.message);
+      console.error('Data type:', typeof data, 'Is array:', Array.isArray(data));
+      if (Array.isArray(data)) {
+        console.error('First item sample:', JSON.stringify(data[0] || {}));
+      }
       return res.status(400).json({ error: 'Data format is invalid: ' + serializeErr.message });
     }
     
     // Save the data
     await pool.query(
       'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-      [`squat_${section}`, JSON.stringify(data)]
+      [`squat_${section}`, serialized]
     );
     
     console.log(`✅ POST /api/${section} saved successfully`);
-    res.json({ success: true, message: `${section} saved`, data: Array.isArray(data) ? data.length + ' items' : 'object' });
+    res.json({ success: true, message: `${section} saved`, count: Array.isArray(data) ? data.length : 1 });
   } catch (err) {
     console.error(`❌ POST /api/${req.params.section} error:`, err.message);
     console.error('Stack:', err.stack);
