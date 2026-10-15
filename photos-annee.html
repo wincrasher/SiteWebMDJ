@@ -34,10 +34,11 @@
 
 <script src="admin-logic.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const year = params.get('year');
   document.getElementById('year-title').textContent = `Événements ${year}`;
+  await initializeDataFromAPI();
   renderPhotosByYear();
   setupNav();
   displayRandomTestimonial();
