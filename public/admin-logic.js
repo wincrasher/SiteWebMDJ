@@ -58,10 +58,22 @@ async function initializeDataFromAPI() {
             data = [];
           }
           publicDataCache[section] = Array.isArray(data) ? data : (data || []);
-          console.log(`✅ Loaded ${section} (${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 'empty'})`);
+          if (section === 'photoYears') {
+            console.log(`✅ Loaded photoYears: ${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 0} years`);
+            if (Array.isArray(publicDataCache[section])) {
+              publicDataCache[section].forEach(year => {
+                console.log(`   - ${year.year}: ${year.events ? year.events.length : 0} events, cover: ${year.cover}`);
+              });
+            }
+          } else {
+            console.log(`✅ Loaded ${section} (${Array.isArray(publicDataCache[section]) ? publicDataCache[section].length : 'empty'})`);
+          }
         }
       } else {
-        console.warn(`⚠️ Failed to load ${section}, using defaults`);
+        console.warn(`⚠️ Failed to load ${section} (status ${response.status}), using defaults`);
+        if (section === 'photoYears') {
+          console.warn(`  📷 photoYears defaults: ${defaults[section] ? defaults[section].length : 0} years`);
+        }
         publicDataCache[section] = section === 'programmation' ? { facebookLink: '', calendarImage: '' } : (section === 'theme' ? 'aucun' : (defaults[section] || []));
       }
     } catch (err) {
