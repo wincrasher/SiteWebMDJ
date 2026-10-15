@@ -1,7 +1,7 @@
 const defaults = {
-  // All default data should come from database (BD)
-  // Keep only empty defaults to prevent "flash" of temporary data
+  // Keep ONLY minimal defaults - all real data should come from database
   heroBanner: [],
+  heroBannerDuration: 5,
   news: [],
   activitesRegulières: [],
   programmation: { facebookLink: '', calendarImage: '' },
@@ -9,22 +9,10 @@ const defaults = {
   events: [],
   team: [],
   partners: [],
-  photoYears:[
-    {id:2026,year:2026,cover:"assets/mission.jpeg",events:[
-      {id:1,name:"Basketball Championship",date:"2026-09-20",description:"",photos:[
-        {id:1,src:"assets/mission.jpeg",caption:"Moment du match"},
-        {id:2,src:"assets/activites.jpeg",caption:"Les jeunes en action"}
-      ]},
-      {id:2,name:"Atelier Créatif",date:"2026-09-15",description:"",photos:[
-        {id:3,src:"assets/participation.jpeg",caption:"Création en cours"},
-        {id:4,src:"assets/equipe.jpeg",caption:"Présentation des œuvres"}
-      ]}
-    ]},
-    {id:2025,year:2025,cover:"assets/activites.jpeg",events:[]}
-  ],
+  photoYears: [],
   temoignages: [],
   ourStory: [],
-  theme: 'aucun'  // Only non-DB section with default
+  theme: 'aucun'
 };
 
 // In-memory data cache for public pages (loaded from API)
