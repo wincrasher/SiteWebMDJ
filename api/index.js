@@ -121,30 +121,50 @@ app.post('/api/:section', async (req, res) => {
     const { section } = req.params;
     let data = req.body;
     
-    console.log(`📥 POST /api/${section} received, type:`, typeof data, 'isArray:', Array.isArray(data));
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`📥 POST /api/${section}`);
+    console.log(`📦 Raw request body type: ${typeof data}`);
+    console.log(`📦 Is array: ${Array.isArray(data)}`);
+    console.log(`📦 Keys: ${Object.keys(data).join(', ')}`);
+    
+    // Log all fields for team requests
+    if (section === 'team') {
+      console.log(`\n📋 Request fields:`);
+      console.log(`  - name: "${data.name}" (type: ${typeof data.name})`);
+      console.log(`  - id: ${data.id} (type: ${typeof data.id})`);
+      console.log(`  - role: "${data.role}" (type: ${typeof data.role})`);
+      console.log(`  - gender: "${data.gender}" (type: ${typeof data.gender})`);
+      console.log(`  - section: "${data.section}" (type: ${typeof data.section})`);
+      console.log(`  - photo: ${data.photo ? `present (${data.photo.length} bytes)` : 'MISSING'}`);
+      console.log(`  - facts: ${data.facts ? JSON.stringify(data.facts) : 'MISSING'}`);
+    }
     
     // Special handling for team: if single object, upsert into array
     if (section === 'team' && data && !Array.isArray(data)) {
       try {
-        console.log('👤 Processing single team member:', data.name);
+        console.log('\n👤 Processing single team member:', data.name);
         
         // Validate required fields for single member
         if (!data.name || !data.name.trim()) {
-          console.warn('❌ Validation failed: missing name');
+          console.warn('❌ VALIDATION FAILED: name is empty or missing');
           return res.status(400).json({ error: 'Le nom est obligatoire' });
         }
         if (!data.role || !data.role.trim()) {
-          console.warn('❌ Validation failed: missing role');
+          console.warn('❌ VALIDATION FAILED: role is empty or missing');
           return res.status(400).json({ error: 'Le rôle est obligatoire' });
         }
         
         // Fetch current team array FIRST to detect if new or existing
+        console.log('\n🔍 Fetching current team array from database...');
         const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
         let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
         
+        console.log(`   Found ${result.rows.length} row(s)`);
+        console.log(`   Array has ${arr.length} members`);
+        
         // Validate array
         if (!Array.isArray(arr)) {
-          console.warn('⚠️ Stored team data is not an array, resetting...');
+          console.warn('   ⚠️ Data is not an array, resetting...');
           arr = [];
         }
         
@@ -152,35 +172,42 @@ app.post('/api/:section', async (req, res) => {
         const ix = arr.findIndex(m => m && m.id === data.id);
         const isNewMember = ix < 0; // If not found in array, it's new
         
-        console.log(`🔍 Member lookup: id=${data.id}, found=${ix >= 0 ? 'yes' : 'no'}, isNew=${isNewMember}`);
+        console.log(`\n🔎 Member lookup:`);
+        console.log(`   Looking for id: ${data.id}`);
+        console.log(`   Found at index: ${ix}`);
+        console.log(`   Is new member: ${isNewMember ? 'YES' : 'NO'}`);
         
         // Photo is required ONLY for new members
         if (isNewMember && !data.photo) {
-          console.warn('❌ Validation failed: new member without photo');
+          console.warn('❌ VALIDATION FAILED: new member without photo');
           return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
         }
         
         // Validate photo is a string if present
         if (data.photo && typeof data.photo !== 'string') {
-          console.warn('❌ Validation failed: photo is not a string, type:', typeof data.photo);
+          console.warn('❌ VALIDATION FAILED: photo is not a string');
           return res.status(400).json({ error: 'Photo must be a base64 string' });
         }
         
         if (data.photo) {
-          console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
+          console.log(`\n📷 Photo provided: ${data.photo.length} bytes`);
         } else {
-          console.log(`📝 Team member ${data.name} - no photo in payload (editing)`);
+          console.log(`\n📷 No photo in payload (editing existing member)`);
         }
         
         // Upsert: update existing or add new
         if (ix >= 0) {
-          console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
+          console.log(`\n✏️ UPDATING existing member at index ${ix}`);
           const existingMember = arr[ix];
+          
+          console.log(`   Current photo size: ${existingMember.photo ? existingMember.photo.length : 0} bytes`);
           
           // If photo is not in payload, preserve the existing one
           if (!data.photo && existingMember && existingMember.photo) {
             data.photo = existingMember.photo;
-            console.log(`📸 Preserved existing photo (${existingMember.photo.length} bytes)`);
+            console.log(`   ✅ Preserved existing photo (${existingMember.photo.length} bytes)`);
+          } else if (!data.photo) {
+            console.log(`   ⚠️ No photo to preserve! Existing member photo: ${existingMember && existingMember.photo ? 'exists' : 'MISSING'}`);
           }
           
           // Ensure all required fields are strings (not undefined)
@@ -193,9 +220,13 @@ app.post('/api/:section', async (req, res) => {
             data.facts = Array.isArray(data.facts) ? data.facts : [];
           }
           
+          console.log(`   After normalization:`);
+          console.log(`   - name: "${data.name}"`);
+          console.log(`   - photo: ${data.photo ? 'present' : 'EMPTY STRING'}`);
+          
           arr[ix] = data;
         } else {
-          console.log(`✨ Adding new member to array`);
+          console.log(`\n✨ ADDING new member to array`);
           // Ensure all fields are properly typed
           data.name = String(data.name || '');
           data.role = String(data.role || '');
@@ -205,11 +236,13 @@ app.post('/api/:section', async (req, res) => {
           data.facts = Array.isArray(data.facts) ? data.facts : [];
           
           arr.push(data);
+          console.log(`   New array size: ${arr.length}`);
         }
         
         data = arr; // Set data to updated array for saving
       } catch (processErr) {
         console.error('❌ Error processing team member:', processErr.message);
+        console.error('Stack:', processErr.stack);
         return res.status(400).json({ error: 'Error processing team member: ' + processErr.message });
       }
     }
@@ -218,27 +251,32 @@ app.post('/api/:section', async (req, res) => {
     let serialized = '';
     try {
       serialized = JSON.stringify(data);
-      console.log(`✅ Data is valid JSON, size: ${serialized.length} bytes`);
+      console.log(`\n💾 Serialized data: ${serialized.length} bytes`);
+      console.log(`✅ Data is valid JSON`);
     } catch (serializeErr) {
       console.error('❌ Data serialization failed:', serializeErr.message);
       console.error('Data type:', typeof data, 'Is array:', Array.isArray(data));
-      if (Array.isArray(data)) {
-        console.error('First item sample:', JSON.stringify(data[0] || {}));
+      if (Array.isArray(data) && data.length > 0) {
+        console.error('First item:', JSON.stringify(data[0]));
       }
       return res.status(400).json({ error: 'Data format is invalid: ' + serializeErr.message });
     }
     
     // Save the data
+    console.log(`\n💾 Saving to database...`);
     await pool.query(
       'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
       [`squat_${section}`, serialized]
     );
     
     console.log(`✅ POST /api/${section} saved successfully`);
+    console.log(`${'='.repeat(80)}\n`);
+    
     res.json({ success: true, message: `${section} saved`, count: Array.isArray(data) ? data.length : 1 });
   } catch (err) {
-    console.error(`❌ POST /api/${req.params.section} error:`, err.message);
+    console.error(`\n❌ POST /api/${req.params.section} FAILED: ${err.message}`);
     console.error('Stack:', err.stack);
+    console.log(`${'='.repeat(80)}\n`);
     res.status(500).json({ error: err.message });
   }
 });
