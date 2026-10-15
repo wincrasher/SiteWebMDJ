@@ -13,49 +13,75 @@ const D={
 };
 
 const API_URL = window.location.origin + '/api';
-const USE_DATABASE = true;
 
-function load(k){
-  return JSON.parse(localStorage.getItem('squat_'+k)||'null')||defaults[k];
-}
+// In-memory cache - loaded once at startup
+let dataCache = {};
 
-async function loadFullFromDatabase(k){
-  // Fetch complete data with images from database
-  try {
-    const response = await fetch(`${API_URL}/${k}`);
-    if(response.ok){
-      return await response.json();
+// Load all data from database once at startup
+async function initializeFromDatabase() {
+  console.log('📡 Loading all data from database...');
+  for (const section of K) {
+    try {
+      const response = await fetch(`${API_URL}/${section}`);
+      if (response.ok) {
+        dataCache[section] = await response.json();
+        console.log(`✅ Loaded ${section}`);
+      }
+    } catch (err) {
+      console.warn(`Failed to load ${section}:`, err.message);
+      dataCache[section] = [];
     }
-  } catch(e) {
-    console.warn(`Failed to fetch ${k} from database:`, e.message);
   }
-  return load(k); // Fallback to localStorage
+  
+  // Load settings
+  try {
+    const response = await fetch(`${API_URL}/heroBannerDuration`);
+    if (response.ok) {
+      dataCache.heroBannerDuration = await response.json();
+    }
+  } catch (err) {
+    dataCache.heroBannerDuration = 5;
+  }
+  
+  // Load theme
+  try {
+    const response = await fetch(`${API_URL}/theme`);
+    if (response.ok) {
+      dataCache.theme = await response.json();
+    }
+  } catch (err) {
+    dataCache.theme = 'aucun';
+  }
+  
+  console.log('✅ Database initialization complete');
+  applyThemeColors();
 }
 
-function save(k,v){
+// Get data from memory cache
+function load(k) {
+  return dataCache[k] || (Array.isArray(dataCache[k]) ? [] : {});
+}
+
+// Save data to database AND update cache
+async function save(k, v) {
   try {
-    // Send FULL data to database (with images)
-    if (USE_DATABASE) {
-      fetch(`${API_URL}/${k}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(v)
-      }).then(r => {
-        if (r.ok) console.log(`✅ ${k} saved to database`);
-        else console.warn(`Database save failed: ${r.status}`);
-      }).catch(err => console.warn('API unavailable:', err.message));
-    }
+    // Update in-memory cache immediately
+    dataCache[k] = v;
     
-    // Save to localStorage WITHOUT image data (to save space)
-    const localStorageData = stripImageDataForStorage(v);
-    localStorage.setItem('squat_'+k, JSON.stringify(localStorageData));
-  } catch(e){
-    if(e.name==='QuotaExceededError'){
-      alert('⚠️ STORAGE FULL! (10MB limit reached)\n\nThe site is trying to save more data than localStorage can hold.\n\nNote: Your data IS being saved to the database!\n\nClick OK to reload and see the latest data from the database.');
-      location.reload();
-      throw new Error('localStorage quota exceeded');
+    // Send to database (non-blocking)
+    const response = await fetch(`${API_URL}/${k}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(v)
+    });
+    
+    if (response.ok) {
+      console.log(`✅ ${k} saved to database`);
+    } else {
+      console.warn(`⚠️ Database save failed for ${k}: ${response.status}`);
     }
-    throw e;
+  } catch (err) {
+    console.error(`❌ Error saving ${k}:`, err.message);
   }
 }
 
@@ -157,6 +183,58 @@ function renderStorageBar(bytes,label='',limit=100){
   `;
 }
 
+// Get and display database storage stats
+async function getDatabaseStats(){
+  try {
+    const response = await fetch(`${API_URL}/db-stats`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.error('Failed to get DB stats:', err.message);
+  }
+  return null;
+}
+
+function showDatabaseStats(){
+  getDatabaseStats().then(stats => {
+    if (!stats) return;
+    
+    const MB = parseFloat(stats.used_mb);
+    const percent = parseFloat(stats.percentage_used);
+    const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
+    
+    const statsHTML = `
+      <div style="position:fixed;bottom:20px;right:20px;background:white;border:1px solid #d4d4d4;border-radius:12px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:320px;z-index:9999">
+        <h4 style="margin:0 0 12px;color:#0c255f;font-size:14px">💾 Base de données</h4>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;color:#657089">Utilisation</span>
+            <strong style="font-size:12px;color:#0c255f">${MB} MB / ${stats.limit_mb} MB</strong>
+          </div>
+          <div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
+            <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
+          </div>
+          <small style="color:#657089;display:block;margin-top:4px">${percent}% utilisé</small>
+        </div>
+        <div style="font-size:11px;color:#657089;border-top:1px solid #e8e8e8;padding-top:8px;margin-top:8px">
+          <div>📊 ${stats.row_count} section(s) sauvegardée(s)</div>
+        </div>
+      </div>
+    `;
+    
+    // Remove existing stats if present
+    const existing = document.querySelector('[data-db-stats]');
+    if (existing) existing.remove();
+    
+    // Add new stats
+    const div = document.createElement('div');
+    div.setAttribute('data-db-stats', 'true');
+    div.innerHTML = statsHTML;
+    document.body.appendChild(div);
+  });
+}
+
 function showLogin(){document.body.innerHTML=`<div class="login-wrap"><div class="login-card"><div class="brand"><span class="brandmark"></span><span>LE SQUAT<small>Espace administrateur</small></span></div><h1>Connexion</h1><p>Accédez à l'interface d'administration pour gérer le contenu du site.</p><form id="login" class="form"><input id="user" placeholder="Utilisateur" autocomplete="username" required><input id="pass" type="password" placeholder="Mot de passe" autocomplete="current-password" required><button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px">Se connecter</button><div id="err" style="color:#a31515;margin-top:12px;font-weight:700"></div></form><div class="hint"><strong>Identifiants de démo :</strong> admin / squat-demo<br><em>ℹ️ Pour la production, l'authentification doit être gérée côté serveur avec un vrai système sécurisé.</em></div><a href="index.html" style="display:inline-block;margin-top:18px;color:#143a8f;font-weight:800">← Retour au site</a></div></div>`;
 const form=document.querySelector('#login');
 form.onsubmit=(ev)=>{ev.preventDefault();
@@ -176,7 +254,15 @@ function rowSummary(k,o){
 }
 
 function renderPanel(k){
-  const data=load(k),p=document.querySelector('#panel-'+k);
+  const p=document.querySelector('#panel-'+k);
+  if(!p) return;
+  
+  // Get data from in-memory cache (loaded at startup)
+  const data = load(k);
+  renderPanelContent(k, p, data);
+}
+
+function renderPanelContent(k, p, data){
   
   if(k==='activitesRegulières'){
     p.innerHTML=`
@@ -1675,10 +1761,20 @@ function importData(event){
 }
 
 function resetDemo(){
-  if(confirm('Réinitialiser toutes les données et revenir aux valeurs par défaut?')){
-    K.forEach(k=>localStorage.removeItem('squat_'+k));
-    localStorage.removeItem('squat_heroBannerDuration');
-    K.forEach(renderPanel)
+  if(confirm('Réinitialiser toutes les données de la BD? (Cette action est irréversible)')){
+    fetch(`${API_URL}/reset`, {method: 'POST'})
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(() => {
+        // Clear in-memory cache
+        K.forEach(k => dataCache[k] = []);
+        dataCache.heroBannerDuration = 5;
+        dataCache.theme = 'aucun';
+        
+        // Re-render all panels
+        K.forEach(renderPanel);
+        alert('✅ Toutes les données ont été supprimées.');
+      })
+      .catch(err => alert(`❌ Erreur lors de la réinitialisation: ${err.message}`));
   }
 }
 
@@ -1714,102 +1810,43 @@ function handleCalendarUpload(event){
 }
 
 function getTotalStorageUsed(){
-  let total=0;
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i);
-    if(key.startsWith('squat_')){
-      const value=localStorage.getItem(key);
-      total+=new Blob([value]).size;
-    }
-  }
-  return total;
+  // No longer using localStorage - return 0
+  // DB stats are fetched via API
+  return 0;
 }
 
-function updateStorageIndicator(){
-  const used=getTotalStorageUsed();
-  const usedMB=(used/1024/1024).toFixed(2);
-  const percent=Math.min((used/(10*1024*1024))*100,100);
-  const color=percent>80?'#ef4444':percent>50?'#f59e0b':'#10b981';
+async function updateStorageIndicator(){
   const indicator=document.getElementById('storage-indicator');
-  if(indicator){
-    indicator.innerHTML=`
-      <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 Stockage: ${usedMB}MB / 10MB (${percent.toFixed(0)}%)</div>
+  if(!indicator) return;
+  
+  try {
+    const stats = await getDatabaseStats();
+    if (!stats) {
+      indicator.innerHTML = '<small style="color:#657089">Impossible de charger les stats BD</small>';
+      return;
+    }
+    
+    const used = parseFloat(stats.used_mb);
+    const limit = stats.limit_mb;
+    const percent = parseFloat(stats.percentage_used);
+    const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
+    
+    indicator.innerHTML = `
+      <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 BD: ${used} MB / ${limit} MB (${percent}%)</div>
       <div style="width:100%;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
         <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
       </div>
     `;
+  } catch (err) {
+    indicator.innerHTML = '<small style="color:#999">Stats BD indisponibles</small>';
   }
-}
-
-async function loadAllFromDatabase(){
-  console.log('🔄 Loading data from database...');
-  try {
-    for(const section of K){
-      try {
-        const response = await fetch(`${API_URL}/${section}`);
-        if(response.ok){
-          let data = await response.json();
-          if(data && Object.keys(data).length > 0){
-            // Filter out large image data before storing in localStorage
-            data = stripImageDataForStorage(data);
-            localStorage.setItem('squat_'+section, JSON.stringify(data));
-            console.log(`✅ Loaded ${section} from database (images not cached)`);
-          }
-        }
-      } catch(e){
-        console.warn(`Failed to load ${section}:`, e.message);
-      }
-    }
-  } catch(e){
-    console.error('Database load failed:', e);
-  }
-}
-
-function stripImageDataForStorage(data){
-  // Aggressively remove ALL image data before storing in localStorage
-  // Images stay in database only
-  if(!data) return data;
-  
-  const stripped = JSON.parse(JSON.stringify(data));
-  
-  // Remove ALL data URLs properties (they start with "data:")
-  function removeImageProps(obj){
-    if(!obj || typeof obj !== 'object') return obj;
-    
-    if(Array.isArray(obj)){
-      return obj.map(item => removeImageProps(item));
-    }
-    
-    const cleaned = {};
-    for(let key in obj){
-      const value = obj[key];
-      // Skip properties that contain image data
-      if(key === 'src' || key === 'photo' || key === 'logo' || key === 'cover' || key === 'calendarImage'){
-        continue; // Skip image properties
-      }
-      // Remove data URLs
-      if(typeof value === 'string' && value.startsWith('data:')){
-        continue; // Skip data URLs
-      }
-      // Recursively clean nested objects/arrays
-      if(typeof value === 'object'){
-        cleaned[key] = removeImageProps(value);
-      } else {
-        cleaned[key] = value;
-      }
-    }
-    return cleaned;
-  }
-  
-  return removeImageProps(stripped);
 }
 
 function start(){
   if(!logged())return showLogin();
   
-  // Load data from database first, then render
-  loadAllFromDatabase().then(() => {
-    applyThemeColors();
+  // Load all data from database then render
+  initializeFromDatabase().then(() => {
     K.forEach(renderPanel);
     document.querySelectorAll('.admin-nav button[data-k]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.k));
     updateStorageIndicator();
