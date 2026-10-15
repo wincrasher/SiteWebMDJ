@@ -125,7 +125,8 @@
 
 <script src="admin-logic.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeDataFromAPI();
   setupNav();
   setupHeroBanner();
   applyThemeColors();
