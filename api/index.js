@@ -157,7 +157,26 @@ app.post('/api/:section', async (req, res) => {
         // Fetch current team array FIRST to detect if new or existing
         console.log('\n🔍 Fetching current team array from database...');
         const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
-        let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
+        let arr = [];
+        
+        if (result.rows.length > 0) {
+          try {
+            const stored = result.rows[0].value;
+            console.log(`   Stored data type: ${typeof stored}`);
+            console.log(`   Stored data (first 100 chars): ${String(stored).substring(0, 100)}`);
+            
+            // Try to parse the stored value
+            arr = JSON.parse(stored);
+            console.log(`   ✅ Successfully parsed stored data`);
+          } catch (parseErr) {
+            console.warn(`   ❌ Failed to parse stored team data: ${parseErr.message}`);
+            console.warn(`   🔄 Resetting team data to empty array`);
+            arr = [];
+            // We'll overwrite the corrupted data when we save
+          }
+        } else {
+          console.log(`   No existing team data found`);
+        }
         
         console.log(`   Found ${result.rows.length} row(s)`);
         console.log(`   Array has ${arr.length} members`);
@@ -170,14 +189,18 @@ app.post('/api/:section', async (req, res) => {
         
         // Check if member already exists
         const ix = arr.findIndex(m => m && m.id === data.id);
-        const isNewMember = ix < 0; // If not found in array, it's new
+        // If array was empty due to corruption, we can't know if it's new
+        // But if id is small (< 1000), it's likely an existing member from initial data
+        const isNewMember = ix < 0 && (!data.id || data.id > 1000);
         
         console.log(`\n🔎 Member lookup:`);
         console.log(`   Looking for id: ${data.id}`);
         console.log(`   Found at index: ${ix}`);
-        console.log(`   Is new member: ${isNewMember ? 'YES' : 'NO'}`);
+        console.log(`   Array size: ${arr.length}`);
+        console.log(`   Is new member: ${isNewMember ? 'YES' : 'NO'} (based on id < 1000: ${data.id < 1000})`);
         
-        // Photo is required ONLY for new members
+        // Photo is required ONLY for truly new members
+        // If id < 1000, it's likely an existing member from initial data, photo optional
         if (isNewMember && !data.photo) {
           console.warn('❌ VALIDATION FAILED: new member without photo');
           return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
@@ -207,7 +230,7 @@ app.post('/api/:section', async (req, res) => {
             data.photo = existingMember.photo;
             console.log(`   ✅ Preserved existing photo (${existingMember.photo.length} bytes)`);
           } else if (!data.photo) {
-            console.log(`   ⚠️ No photo to preserve! Existing member photo: ${existingMember && existingMember.photo ? 'exists' : 'MISSING'}`);
+            console.log(`   ⚠️ No photo to preserve`);
           }
           
           // Ensure all required fields are strings (not undefined)
@@ -216,15 +239,27 @@ app.post('/api/:section', async (req, res) => {
           data.gender = String(data.gender || 'Homme');
           data.section = String(data.section || 'Équipe');
           data.photo = String(data.photo || '');
-          if (data.facts && !Array.isArray(data.facts)) {
-            data.facts = Array.isArray(data.facts) ? data.facts : [];
-          }
+          data.facts = Array.isArray(data.facts) ? data.facts : [];
           
           console.log(`   After normalization:`);
           console.log(`   - name: "${data.name}"`);
-          console.log(`   - photo: ${data.photo ? 'present' : 'EMPTY STRING'}`);
+          console.log(`   - photo: ${data.photo ? `${data.photo.length} bytes` : 'EMPTY'}`);
           
           arr[ix] = data;
+        } else if (ix < 0 && arr.length === 0 && data.id && data.id < 1000) {
+          // Special case: Array was corrupted and reset, but member id < 1000 (existing member)
+          console.log(`\n📝 RECOVERING existing member (array was corrupted, id < 1000): ${data.name}`);
+          console.log(`   Treating as edit, not new member`);
+          
+          // Normalize fields
+          data.name = String(data.name || '');
+          data.role = String(data.role || '');
+          data.gender = String(data.gender || 'Homme');
+          data.section = String(data.section || 'Équipe');
+          data.photo = String(data.photo || '');
+          data.facts = Array.isArray(data.facts) ? data.facts : [];
+          
+          arr.push(data);
         } else {
           console.log(`\n✨ ADDING new member to array`);
           // Ensure all fields are properly typed
