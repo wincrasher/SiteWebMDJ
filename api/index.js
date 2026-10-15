@@ -137,9 +137,20 @@ app.post('/api/:section', async (req, res) => {
         return res.status(400).json({ error: 'Le rôle est obligatoire' });
       }
       
-      // Photo is optional when EDITING (not included in payload)
-      // Photo is required when ADDING (no id means new member)
-      const isNewMember = !data.id || data.id < 1000; // Assume id like Date.now() for new
+      // Fetch current team array FIRST to detect if new or existing
+      const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
+      let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
+      
+      // Validate array
+      if (!Array.isArray(arr)) arr = [];
+      
+      // Check if member already exists
+      const ix = arr.findIndex(m => m.id === data.id);
+      const isNewMember = ix < 0; // If not found in array, it's new
+      
+      console.log(`🔍 Member lookup: id=${data.id}, found=${ix >= 0 ? 'yes' : 'no'}, isNew=${isNewMember}`);
+      
+      // Photo is required ONLY for new members
       if (isNewMember && !data.photo) {
         console.warn('❌ Validation failed: new member without photo');
         return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
@@ -154,24 +165,16 @@ app.post('/api/:section', async (req, res) => {
       if (data.photo) {
         console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
       } else {
-        console.log(`📝 Team member ${data.name} - no photo change (editing)`);
+        console.log(`📝 Team member ${data.name} - no photo in payload (editing)`);
       }
       
-      // Fetch current team array
-      const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
-      let arr = result.rows.length ? JSON.parse(result.rows[0].value) : [];
-      
-      // Validate array
-      if (!Array.isArray(arr)) arr = [];
-      
-      // Upsert: find and update, or add new
-      const ix = arr.findIndex(m => m.id === data.id);
+      // Upsert: update existing or add new
       if (ix >= 0) {
         console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
         // If photo is not in payload, preserve the existing one
         if (!data.photo) {
           data.photo = arr[ix].photo;
-          console.log(`📸 Preserved existing photo (${arr[ix].photo.length} bytes)`);
+          console.log(`📸 Preserved existing photo (${arr[ix].photo ? arr[ix].photo.length : 0} bytes)`);
         }
         arr[ix] = data;
       } else {
