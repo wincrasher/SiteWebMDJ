@@ -255,10 +255,24 @@ async function getDatabaseStats(){
 
 function showDatabaseStats(){
   getDatabaseStats().then(stats => {
-    if (!stats) return;
+    console.log('📊 showDatabaseStats received stats:', stats);
+    
+    if (!stats || !stats.used_mb) {
+      console.warn('⚠️ Stats missing or incomplete:', stats);
+      return;
+    }
     
     const MB = parseFloat(stats.used_mb);
     const percent = parseFloat(stats.percentage_used);
+    const limit = parseInt(stats.limit_mb) || 500;
+    
+    console.log('📊 Parsed values - MB:', MB, 'percent:', percent, 'limit:', limit);
+    
+    if (isNaN(MB) || isNaN(percent)) {
+      console.error('⚠️ Invalid DB stats - NaN detected in showDatabaseStats');
+      return;
+    }
+    
     const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
     
     const statsHTML = `
@@ -267,7 +281,7 @@ function showDatabaseStats(){
         <div style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
             <span style="font-size:12px;color:#657089">Utilisation</span>
-            <strong style="font-size:12px;color:#0c255f">${MB} MB / ${stats.limit_mb} MB</strong>
+            <strong style="font-size:12px;color:#0c255f">${MB} MB / ${limit} MB</strong>
           </div>
           <div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
             <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
