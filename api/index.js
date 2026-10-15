@@ -89,23 +89,32 @@ async function initDatabase() {
 app.get('/api/:section', async (req, res) => {
   try {
     const { section } = req.params;
+    console.log(`\n📥 GET /api/${section}`);
+    
     const result = await pool.query(
       'SELECT value FROM site_data WHERE key = $1',
       [`squat_${section}`]
     );
     
     if (result.rows.length > 0) {
-      res.json(result.rows[0].value);
+      // PostgreSQL JSONB is automatically parsed as object
+      const value = result.rows[0].value;
+      console.log(`   ✅ Retrieved from database, type: ${typeof value}`);
+      res.json(value);
     } else {
       // Return appropriate empty default based on section type
       if (section === 'programmation') {
+        console.log(`   No data found, returning empty programmation object`);
         res.json({ facebookLink: '', calendarImage: '' });
       } else if (section === 'theme') {
+        console.log(`   No data found, returning default theme`);
         res.json('aucun');
       } else if (section === 'heroBannerDuration') {
+        console.log(`   No data found, returning default duration`);
         res.json(5);
       } else {
         // Most sections are arrays
+        console.log(`   No data found, returning empty array`);
         res.json([]);
       }
     }
@@ -277,7 +286,7 @@ app.post('/api/:section', async (req, res) => {
     let serialized = '';
     try {
       serialized = JSON.stringify(data);
-      console.log(`\n💾 Serialized data: ${serialized.length} bytes`);
+      console.log(`\n💾 Data to save: ${serialized.length} bytes`);
       console.log(`✅ Data is valid JSON`);
     } catch (serializeErr) {
       console.error('❌ Data serialization failed:', serializeErr.message);
@@ -289,10 +298,12 @@ app.post('/api/:section', async (req, res) => {
     }
     
     // Save the data
+    // ✅ FIX: Send object directly to JSONB column, NOT stringified
+    // PostgreSQL driver will handle JSON conversion automatically
     console.log(`\n💾 Saving to database...`);
     await pool.query(
       'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-      [`squat_${section}`, serialized]
+      [`squat_${section}`, data]  // Send object directly, not serialized string
     );
     
     console.log(`✅ POST /api/${section} saved successfully`);
