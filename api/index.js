@@ -169,6 +169,39 @@ app.get('/api/db-health', async (req, res) => {
   }
 });
 
+// Database stats - real size usage
+app.get('/api/db-stats', async (req, res) => {
+  try {
+    // Get all data from site_data table
+    const result = await pool.query('SELECT key, value FROM site_data WHERE key LIKE $1', ['squat_%']);
+    
+    // Calculate total size
+    let totalBytes = 0;
+    result.rows.forEach(row => {
+      totalBytes += JSON.stringify(row.value).length; // Size in bytes
+    });
+    
+    // Supabase free plan = 500MB
+    const limitBytes = 500 * 1024 * 1024; // 500 MB
+    const percentageUsed = (totalBytes / limitBytes * 100).toFixed(2);
+    
+    res.json({
+      used_bytes: totalBytes,
+      used_mb: (totalBytes / 1024 / 1024).toFixed(2),
+      limit_mb: 500,
+      percentage_used: percentageUsed,
+      row_count: result.rows.length,
+      rows: result.rows.map(r => ({
+        key: r.key,
+        size_kb: (JSON.stringify(r.value).length / 1024).toFixed(2)
+      }))
+    });
+  } catch (err) {
+    console.error('❌ DB stats error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback - serve index.html for any non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
