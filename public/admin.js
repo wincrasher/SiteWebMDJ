@@ -1,4 +1,4 @@
-const K=['heroBanner','activitesRegulières','programmation','ressources','team','partners','photoYears','temoignages','ourStory','theme','news','events'];
+const K=['heroBanner','activitesRegulières','programmation','ressources','team','partners','photoYears','temoignages','ourStory','theme','events'];
 const D={
   heroBanner:{label:'Page d\'accueil',fields:[['caption','Légende','text']]},
   activitesRegulières:{label:'Activités régulières',fields:[['name','Nom activité','text'],['desc','Description','textarea']]},
@@ -319,7 +319,6 @@ if(document.querySelector('#user').value==='admin'&&document.querySelector('#pas
 else document.querySelector('#err').textContent='❌ Identifiants invalides. Vérifiez votre saisie.'}}
 
 function rowSummary(k,o){
-  if(k==='news')return `<strong>${e(o.title)}</strong><br><small>${e(o.date)} — ${e(o.text).slice(0,100)}</small>`;
   if(k==='events')return `<strong>${e(o.title)}</strong><br><small>${e(o.date)} · ${e(o.time)} — ${e(o.desc)}</small>`;
   if(k==='team')return `<strong>${e(o.name)}</strong><br><small>${e(o.role)} (${e(o.section||'Équipe')}) — ${(o.facts||[]).map(e).join(' · ')}</small>`;
   if(k==='partners')return `<strong>${e(o.name)}</strong><br><small>${e(o.type)}${o.logo?' — Logo présent':''}</small>`;
@@ -1805,8 +1804,8 @@ function importData(event){
       const importLog=[];
       const failedCategories=[];
       
-      // Étape 1 : Données texte (news, events, partners) - très léger
-      const textCategories=['news','events','partners'];
+      // Étape 1 : Données texte (events, partners) - très léger
+      const textCategories=['events','partners'];
       for(let k of textCategories){
         if(data[k]){
           try{

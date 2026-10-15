@@ -2,7 +2,6 @@ const defaults = {
   // Keep ONLY minimal defaults - all real data should come from database
   heroBanner: [],
   heroBannerDuration: 5,
-  news: [],
   activitesRegulières: [],
   programmation: { facebookLink: '', calendarImage: '' },
   ressources: [],
@@ -24,7 +23,7 @@ async function initializeDataFromAPI() {
   const API_URL = window.location.origin + '/api';
   
   // List of sections to load
-  const sections = ['heroBanner', 'activitesRegulières', 'programmation', 'ressources', 'team', 'partners', 'photoYears', 'temoignages', 'ourStory', 'theme', 'news', 'events'];
+  const sections = ['heroBanner', 'activitesRegulières', 'programmation', 'ressources', 'team', 'partners', 'photoYears', 'temoignages', 'ourStory', 'theme', 'events'];
   
   // Load all sections in PARALLEL instead of sequentially
   const promises = sections.map(section =>
@@ -210,19 +209,6 @@ function applyThemeColors(){
   root.style.setProperty('--surface',colors.surface);
   document.body.style.background=colors.background;
   applyThemeIcons(theme);
-}
-
-function renderNews(){
-  const el=document.querySelector('#news-grid');
-  if(!el)return;
-  el.innerHTML=getData('news').sort((a,b)=>b.date.localeCompare(a.date)).map(n=>`
-    <article class="card news-card">
-      <span class="badge">Nouvelle</span>
-      <h3>${esc(n.title)}</h3>
-      <div class="news-meta">${new Date(n.date+'T12:00').toLocaleDateString('fr-CA',{year:'numeric',month:'long',day:'numeric'})}</div>
-      <p>${esc(n.text)}</p>
-    </article>
-  `).join('')
 }
 
 function openImageModal(src){
