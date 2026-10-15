@@ -176,41 +176,21 @@ function getStorageColor(bytes){
   return '#ef4444';
 }
 
-function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.70){
+function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.85){
   return new Promise((resolve)=>{
     const img=new Image();
     img.onload=()=>{
       const canvas=document.createElement('canvas');
-      let width=img.width;
-      let height=img.height;
-      
-      // Calculer les nouvelles dimensions en maintenant le ratio
-      if(width>height){
-        if(width>maxWidth){
-          height=Math.round((height*maxWidth)/width);
-          width=maxWidth;
-        }
-      }else{
-        if(height>maxHeight){
-          width=Math.round((width*maxHeight)/height);
-          height=maxHeight;
-        }
-      }
-      
-      canvas.width=maxWidth;
-      canvas.height=maxHeight;
+      // Keep original dimensions without resizing
+      canvas.width=img.width;
+      canvas.height=img.height;
       const ctx=canvas.getContext('2d');
       
-      // Fond blanc et centrer l'image
-      ctx.fillStyle='#ffffff';
-      ctx.fillRect(0,0,maxWidth,maxHeight);
+      // Draw image at original size with compression only
+      ctx.drawImage(img,0,0);
       
-      const x=(maxWidth-width)/2;
-      const y=(maxHeight-height)/2;
-      ctx.drawImage(img,x,y,width,height);
-      
-      const resized=canvas.toDataURL('image/jpeg',quality);
-      resolve(resized);
+      const compressed=canvas.toDataURL('image/jpeg',quality);
+      resolve(compressed);
     };
     img.src=dataUrl;
   });
