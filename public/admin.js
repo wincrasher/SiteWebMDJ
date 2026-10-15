@@ -238,10 +238,17 @@ async function getDatabaseStats(){
   try {
     const response = await fetch(`${API_URL}/db-stats`);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ DB Stats API Response:', data);
+      return data;
+    } else {
+      console.error('❌ DB Stats API Error - Status:', response.status);
+      const errorData = await response.json();
+      console.error('Error details:', errorData);
+      return null;
     }
   } catch (err) {
-    console.error('Failed to get DB stats:', err.message);
+    console.error('❌ Failed to get DB stats:', err.message);
   }
   return null;
 }
@@ -1984,14 +1991,26 @@ async function updateStorageIndicator(){
   
   try {
     const stats = await getDatabaseStats();
-    if (!stats) {
+    console.log('📊 updateStorageIndicator received stats:', stats);
+    
+    if (!stats || !stats.used_mb) {
+      console.warn('⚠️ Stats missing required fields:', stats);
       indicator.innerHTML = '<small style="color:#657089">Impossible de charger les stats BD</small>';
       return;
     }
     
     const used = parseFloat(stats.used_mb);
-    const limit = stats.limit_mb;
+    const limit = parseInt(stats.limit_mb) || 500;
     const percent = parseFloat(stats.percentage_used);
+    
+    console.log('📊 Parsed values - used:', used, 'limit:', limit, 'percent:', percent);
+    
+    if (isNaN(used) || isNaN(percent)) {
+      console.error('⚠️ Invalid stats values - NaN detected');
+      indicator.innerHTML = '<small style="color:#657089">Stats BD invalides</small>';
+      return;
+    }
+    
     const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
     
     indicator.innerHTML = `

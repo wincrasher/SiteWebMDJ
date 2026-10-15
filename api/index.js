@@ -596,17 +596,23 @@ app.get('/api/db-stats', async (req, res) => {
     // Get all data from site_data table
     const result = await pool.query('SELECT key, value FROM site_data WHERE key LIKE $1', ['squat_%']);
     
+    console.log(`📊 DB Stats - Found ${result.rows.length} squat_* keys`);
+    
     // Calculate total size
     let totalBytes = 0;
     result.rows.forEach(row => {
-      totalBytes += JSON.stringify(row.value).length; // Size in bytes
+      const size = JSON.stringify(row.value).length; // Size in bytes
+      totalBytes += size;
+      console.log(`  📝 ${row.key}: ${size} bytes`);
     });
+    
+    console.log(`📊 Total size: ${totalBytes} bytes = ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
     
     // Supabase free plan = 500MB
     const limitBytes = 500 * 1024 * 1024; // 500 MB
     const percentageUsed = (totalBytes / limitBytes * 100).toFixed(2);
     
-    res.json({
+    const response = {
       used_bytes: totalBytes,
       used_mb: (totalBytes / 1024 / 1024).toFixed(2),
       limit_mb: 500,
@@ -616,7 +622,10 @@ app.get('/api/db-stats', async (req, res) => {
         key: r.key,
         size_kb: (JSON.stringify(r.value).length / 1024).toFixed(2)
       }))
-    });
+    };
+    
+    console.log('✅ Sending response:', response);
+    res.json(response);
   } catch (err) {
     console.error('❌ DB stats error:', err.message);
     res.status(500).json({ error: err.message });
