@@ -221,7 +221,7 @@ function renderStorageBar(bytes,label='',limit=100){
   const KB=bytes/1024;
   const percent=Math.min((MB/limit)*100,100);
   const color=getStorageColor(bytes);
-  const sizeDisplay=MB<1?`${KB.toFixed(0)} KB`:`${MB.toFixed(1)} MB`;
+  const sizeDisplay=MB<1?`${KB.toFixed(2)} KB`:`${MB.toFixed(2)} MB`;
   return `
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -1437,7 +1437,7 @@ function openPhotoEditor(k,yearId,eventId,photoId){
       const resizedData=await resizeImage(evt.target.result, 250, 300, 0.55);
       photoObj.src=resizedData;
       previewImg.src=resizedData;
-      fileInfo.textContent=`${file.name} · ${(file.size/1024).toFixed(1)} KB → resized`;
+      fileInfo.textContent=`${file.name} · ${(file.size/1024).toFixed(2)} KB → resized`;
       uploadZone.style.display='none';
       previewZone.style.display='block';
     };
@@ -1647,7 +1647,7 @@ function exportData(type='full'){
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    const exportSize=(blob.size/1024).toFixed(1);
+    const exportSize=(blob.size/1024).toFixed(2);
     alert(`✅ Export léger réussi!\\n\\nFichier : Le-Squat-Données-...-TEXTE.json\\nTaille : ${exportSize} KB\\n\\n✨ Cet export ne contient pas les photos mais tous les textes et métadonnées.\\n\\n💾 Très rapide à importer!`);
   }
   else if(type==='full-clean'){
