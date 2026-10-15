@@ -86,11 +86,32 @@ async function initDatabase() {
 }
 
 // GET database stats endpoint - MUST come before /api/:section to take priority
+// Helper function to calculate directory size recursively
+function calculateDirSize(dirPath) {
+  let totalBytes = 0;
+  try {
+    const files = fs.readdirSync(dirPath);
+    for (const file of files) {
+      const filePath = path.join(dirPath, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        totalBytes += calculateDirSize(filePath); // Recursive
+      } else {
+        totalBytes += stat.size;
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ Could not read directory ${dirPath}:`, err.message);
+  }
+  return totalBytes;
+}
+
 app.get('/api/db-stats', async (req, res) => {
   try {
     console.log('\n📊 [DB-STATS] Endpoint called at', new Date().toISOString());
     
-    // Step 1: Query database
+    // PART 1: Calculate DATABASE size
+    console.log('📊 [DB-STATS] === PART 1: DATABASE SIZE ===');
     console.log('📊 [DB-STATS] Querying database...');
     const result = await pool.query(
       'SELECT key, value FROM site_data WHERE key LIKE $1',
@@ -102,9 +123,9 @@ app.get('/api/db-stats', async (req, res) => {
     console.log('📊 [DB-STATS] Result.rows is array?', Array.isArray(result.rows));
     console.log('📊 [DB-STATS] Number of rows:', result.rows ? result.rows.length : 'N/A');
     
-    // Step 2: Validate result structure
+    // Validate result structure
     if (!result || !result.rows || !Array.isArray(result.rows)) {
-      console.error('❌ [DB-STATS] Invalid result structure!');
+      console.error('❌ [DB-STATS] Invalid query result structure!');
       return res.status(500).json({ 
         error: 'Database query returned invalid structure',
         hasResult: !!result,
@@ -112,22 +133,46 @@ app.get('/api/db-stats', async (req, res) => {
       });
     }
     
-    // Step 3: Calculate sizes
-    console.log('📊 [DB-STATS] Calculating sizes for', result.rows.length, 'rows...');
-    let totalBytes = 0;
+    // Calculate database JSON size
+    console.log('📊 [DB-STATS] Calculating database JSON sizes for', result.rows.length, 'rows...');
+    let dbBytes = 0;
     
     for (const row of result.rows) {
       try {
         const strValue = JSON.stringify(row.value);
         const sizeBytes = strValue ? strValue.length : 0;
-        totalBytes += sizeBytes;
+        dbBytes += sizeBytes;
         console.log(`  📝 [DB-STATS] ${row.key}: ${sizeBytes} bytes`);
       } catch (stringifyErr) {
         console.error(`  ❌ [DB-STATS] Failed to stringify ${row.key}:`, stringifyErr.message);
       }
     }
     
-    console.log('📊 [DB-STATS] Total bytes calculated:', totalBytes);
+    console.log(`📊 [DB-STATS] Database total: ${dbBytes} bytes = ${(dbBytes / 1024 / 1024).toFixed(2)} MB`);
+    
+    // PART 2: Calculate ASSETS (files) size
+    console.log('\n📊 [DB-STATS] === PART 2: ASSETS FILE SIZE ===');
+    const assetsPath = path.join(__dirname, '../public/assets');
+    console.log('📊 [DB-STATS] Scanning directory:', assetsPath);
+    
+    let assetsBytes = 0;
+    try {
+      if (fs.existsSync(assetsPath)) {
+        assetsBytes = calculateDirSize(assetsPath);
+        console.log(`📊 [DB-STATS] Assets total: ${assetsBytes} bytes = ${(assetsBytes / 1024 / 1024).toFixed(2)} MB`);
+      } else {
+        console.warn('⚠️ [DB-STATS] Assets directory does not exist:', assetsPath);
+      }
+    } catch (err) {
+      console.error('❌ [DB-STATS] Error calculating assets size:', err.message);
+    }
+    
+    // PART 3: Combine totals
+    console.log('\n📊 [DB-STATS] === PART 3: TOTAL STORAGE ===');
+    const totalBytes = dbBytes + assetsBytes;
+    console.log(`📊 [DB-STATS] Database: ${(dbBytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`📊 [DB-STATS] Assets: ${(assetsBytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`📊 [DB-STATS] Total: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
     
     // Step 4: Calculate metrics
     const limitBytes = 500 * 1024 * 1024; // 500 MB
@@ -143,6 +188,10 @@ app.get('/api/db-stats', async (req, res) => {
     statsResponse.limit_mb = 500;
     statsResponse.percentage_used = String(percentageUsed);
     statsResponse.row_count = result.rows.length;
+    statsResponse.db_bytes = dbBytes;
+    statsResponse.db_mb = (dbBytes / 1024 / 1024).toFixed(2);
+    statsResponse.assets_bytes = assetsBytes;
+    statsResponse.assets_mb = (assetsBytes / 1024 / 1024).toFixed(2);
     statsResponse.rows = result.rows.map(r => ({
       key: r.key,
       size_kb: (JSON.stringify(r.value).length / 1024).toFixed(2)
@@ -153,7 +202,9 @@ app.get('/api/db-stats', async (req, res) => {
     console.log('  - Is Array?', Array.isArray(statsResponse));
     console.log('  - Keys:', Object.keys(statsResponse));
     console.log('  - used_mb value:', statsResponse.used_mb);
-    console.log('  - Full object:', JSON.stringify(statsResponse).substring(0, 150) + '...');
+    console.log('  - db_mb value:', statsResponse.db_mb);
+    console.log('  - assets_mb value:', statsResponse.assets_mb);
+    console.log('  - Full object:', JSON.stringify(statsResponse).substring(0, 200) + '...');
     
     // Step 6: Paranoia check before sending
     if (Array.isArray(statsResponse)) {

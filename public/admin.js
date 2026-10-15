@@ -280,8 +280,11 @@ function showDatabaseStats(){
     const MB = parseFloat(stats.used_mb);
     const percent = parseFloat(stats.percentage_used);
     const limit = parseInt(stats.limit_mb) || 500;
+    const dbMB = parseFloat(stats.db_mb) || 0;
+    const assetsMB = parseFloat(stats.assets_mb) || 0;
     
     console.log('📊 Parsed values - MB:', MB, 'percent:', percent, 'limit:', limit);
+    console.log('📊 Breakdown - DB:', dbMB, 'MB, Assets:', assetsMB, 'MB');
     
     if (isNaN(MB) || isNaN(percent)) {
       console.error('⚠️ Invalid DB stats - NaN detected in showDatabaseStats');
@@ -305,6 +308,8 @@ function showDatabaseStats(){
         </div>
         <div style="font-size:11px;color:#657089;border-top:1px solid #e8e8e8;padding-top:8px;margin-top:8px">
           <div>📊 ${stats.row_count} section(s) sauvegardée(s)</div>
+          <div style="margin-top:4px">Données: ${dbMB} MB</div>
+          <div>Images: ${assetsMB} MB</div>
         </div>
       </div>
     `;
@@ -2047,8 +2052,11 @@ async function updateStorageIndicator(){
     const used = parseFloat(stats.used_mb);
     const limit = parseInt(stats.limit_mb) || 500;
     const percent = parseFloat(stats.percentage_used);
+    const dbMB = parseFloat(stats.db_mb) || 0;
+    const assetsMB = parseFloat(stats.assets_mb) || 0;
     
-    console.log('📊 Parsed values - used:', used, 'USED TYPE:', typeof used, 'limit:', limit, 'percent:', percent);
+    console.log('📊 Parsed values - used:', used, 'limit:', limit, 'percent:', percent);
+    console.log('📊 Breakdown - DB:', dbMB, 'MB, Assets:', assetsMB, 'MB');
     
     if (isNaN(used)) {
       console.error('❌ used_mb cannot be parsed as number:', stats.used_mb, 'TYPE:', typeof stats.used_mb);
@@ -2071,6 +2079,9 @@ async function updateStorageIndicator(){
       <div style="width:100%;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
         <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
       </div>
+      <small style="color:#657089;font-size:11px;margin-top:6px;display:block">
+        📊 BD: ${dbMB} MB | 🖼️ Images: ${assetsMB} MB
+      </small>
     `;
   } catch (err) {
     console.error('❌ updateStorageIndicator exception:', err.message);
