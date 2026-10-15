@@ -457,7 +457,7 @@ app.post('/api/:section', async (req, res) => {
     try {
       // For reliability with JSONB, stringify the data before sending to pg
       // The pg driver will handle proper JSON conversion
-      const dataToSave = typeof data === 'string' ? data : JSON.stringify(data);
+      const dataToSave = JSON.stringify(data);
       
       const queryResult = await pool.query(
         'INSERT INTO site_data (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO UPDATE SET value = $2::jsonb, updated_at = CURRENT_TIMESTAMP',
