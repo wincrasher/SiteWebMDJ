@@ -593,97 +593,95 @@ app.get('/api/db-health', async (req, res) => {
 // Database stats - real size usage
 app.get('/api/db-stats', async (req, res) => {
   try {
-    console.log('📊 /db-stats endpoint called');
+    console.log('\n📊 [DB-STATS] Endpoint called at', new Date().toISOString());
     
-    // Get all data from site_data table
-    const result = await pool.query('SELECT key, value FROM site_data WHERE key LIKE $1', ['squat_%']);
+    // Step 1: Query database
+    console.log('📊 [DB-STATS] Querying database...');
+    const result = await pool.query(
+      'SELECT key, value FROM site_data WHERE key LIKE $1',
+      ['squat_%']
+    );
     
-    console.log('📊 Query result type:', typeof result);
-    console.log('📊 Query result keys:', result ? Object.keys(result) : 'null');
+    console.log('📊 [DB-STATS] Query complete. Result type:', typeof result);
+    console.log('📊 [DB-STATS] Result has rows?', !!result.rows);
+    console.log('📊 [DB-STATS] Result.rows is array?', Array.isArray(result.rows));
+    console.log('📊 [DB-STATS] Number of rows:', result.rows ? result.rows.length : 'N/A');
     
+    // Step 2: Validate result structure
     if (!result || !result.rows || !Array.isArray(result.rows)) {
-      console.error('❌ Invalid query result structure:', {
-        resultExists: !!result,
-        hasRows: result ? result.hasOwnProperty('rows') : false,
-        rowsType: result && result.rows ? typeof result.rows : 'N/A',
-        isArray: result && result.rows ? Array.isArray(result.rows) : false
+      console.error('❌ [DB-STATS] Invalid result structure!');
+      return res.status(500).json({ 
+        error: 'Database query returned invalid structure',
+        hasResult: !!result,
+        details: result ? Object.keys(result) : null
       });
-      return res.status(500).json({ error: 'Invalid database response', details: 'Query did not return valid rows' });
     }
     
-    console.log(`📊 DB Stats - Found ${result.rows.length} squat_* keys`);
-    
-    // Calculate total size
+    // Step 3: Calculate sizes
+    console.log('📊 [DB-STATS] Calculating sizes for', result.rows.length, 'rows...');
     let totalBytes = 0;
-    const rowDetails = [];
     
-    result.rows.forEach(row => {
+    for (const row of result.rows) {
       try {
         const strValue = JSON.stringify(row.value);
-        const size = strValue ? strValue.length : 0;
-        totalBytes += size;
-        rowDetails.push({ key: row.key, bytes: size });
-        console.log(`  📝 ${row.key}: ${size} bytes`);
-      } catch (e) {
-        console.error(`  ⚠️ Could not stringify ${row.key}:`, e.message);
+        const sizeBytes = strValue ? strValue.length : 0;
+        totalBytes += sizeBytes;
+        console.log(`  📝 [DB-STATS] ${row.key}: ${sizeBytes} bytes`);
+      } catch (stringifyErr) {
+        console.error(`  ❌ [DB-STATS] Failed to stringify ${row.key}:`, stringifyErr.message);
       }
-    });
+    }
     
-    console.log(`📊 Total size: ${totalBytes} bytes = ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log('📊 [DB-STATS] Total bytes calculated:', totalBytes);
     
-    // Supabase free plan = 500MB
+    // Step 4: Calculate metrics
     const limitBytes = 500 * 1024 * 1024; // 500 MB
     const usedMB = (totalBytes / 1024 / 1024).toFixed(2);
     const percentageUsed = (totalBytes / limitBytes * 100).toFixed(2);
     
-    console.log(`📊 Calculations - usedMB: "${usedMB}", percentage: "${percentageUsed}"`);
+    console.log(`📊 [DB-STATS] Calculated - MB: ${usedMB}, Percentage: ${percentageUsed}%`);
     
-    // Validate calculations
-    if (!usedMB || usedMB === 'NaN' || isNaN(parseFloat(usedMB))) {
-      console.error('❌ Invalid MB calculation:', { totalBytes, usedMB, type: typeof usedMB });
-      return res.status(500).json({ error: 'Invalid statistics calculation', field: 'used_mb' });
-    }
-    
-    if (!percentageUsed || percentageUsed === 'NaN' || isNaN(parseFloat(percentageUsed))) {
-      console.error('❌ Invalid percentage calculation:', { totalBytes, percentageUsed, type: typeof percentageUsed });
-      return res.status(500).json({ error: 'Invalid percentage calculation', field: 'percentage_used' });
-    }
-    
-    // Build response object
-    const responseRows = result.rows.map(r => ({
+    // Step 5: Build response object (absolutely ensure it's an object)
+    const statsResponse = {};
+    statsResponse.used_bytes = parseInt(totalBytes, 10);
+    statsResponse.used_mb = String(usedMB);
+    statsResponse.limit_mb = 500;
+    statsResponse.percentage_used = String(percentageUsed);
+    statsResponse.row_count = result.rows.length;
+    statsResponse.rows = result.rows.map(r => ({
       key: r.key,
-      size_kb: (JSON.stringify(r.value) ? JSON.stringify(r.value).length / 1024 : 0).toFixed(2)
+      size_kb: (JSON.stringify(r.value).length / 1024).toFixed(2)
     }));
     
-    const response = {
-      used_bytes: parseInt(totalBytes),
-      used_mb: String(usedMB),
-      limit_mb: 500,
-      percentage_used: String(percentageUsed),
-      row_count: parseInt(result.rows.length),
-      rows: responseRows
-    };
+    console.log('📊 [DB-STATS] Response object built');
+    console.log('  - Type:', typeof statsResponse);
+    console.log('  - Is Array?', Array.isArray(statsResponse));
+    console.log('  - Keys:', Object.keys(statsResponse));
+    console.log('  - used_mb value:', statsResponse.used_mb);
+    console.log('  - Full object:', JSON.stringify(statsResponse).substring(0, 150) + '...');
     
-    console.log('📊 Response object built:', {
-      type: typeof response,
-      keys: Object.keys(response),
-      isArray: Array.isArray(response),
-      stringified: JSON.stringify(response).substring(0, 100) + '...'
-    });
-    
-    console.log('✅ Sending response:', JSON.stringify(response));
-    
-    // CRITICAL: Make absolutely sure we're sending the object, not an array
-    if (Array.isArray(response)) {
-      console.error('❌ CRITICAL: Response became an array somehow!');
-      return res.status(500).json({ error: 'Internal error: response structure corrupted' });
+    // Step 6: Paranoia check before sending
+    if (Array.isArray(statsResponse)) {
+      console.error('❌ [DB-STATS] CRITICAL ERROR: Response is an array!');
+      return res.status(500).json({ error: 'Response structure error' });
     }
     
-    res.json(response);
+    if (!statsResponse.used_mb) {
+      console.error('❌ [DB-STATS] CRITICAL ERROR: used_mb is missing!');
+      return res.status(500).json({ error: 'Missing used_mb in response' });
+    }
+    
+    // Step 7: Send response
+    console.log('✅ [DB-STATS] Sending stats response...');
+    return res.json(statsResponse);
+    
   } catch (err) {
-    console.error('❌ DB stats error:', err.message, err.stack);
-    console.error('❌ Full error object:', err);
-    return res.status(500).json({ error: err.message, type: 'exception' });
+    console.error('❌ [DB-STATS] Exception caught:', err.message);
+    console.error('❌ [DB-STATS] Stack:', err.stack);
+    return res.status(500).json({ 
+      error: 'Database stats error',
+      message: err.message
+    });
   }
 });
 
