@@ -162,7 +162,7 @@ function getStorageColor(bytes){
   return '#ef4444';
 }
 
-function resizeImage(dataUrl,maxWidth=800,maxHeight=600){
+function resizeImage(dataUrl,maxWidth=800,maxHeight=600,quality=0.70){
   return new Promise((resolve)=>{
     const img=new Image();
     img.onload=()=>{
@@ -195,7 +195,7 @@ function resizeImage(dataUrl,maxWidth=800,maxHeight=600){
       const y=(maxHeight-height)/2;
       ctx.drawImage(img,x,y,width,height);
       
-      const resized=canvas.toDataURL('image/jpeg',0.70);
+      const resized=canvas.toDataURL('image/jpeg',quality);
       resolve(resized);
     };
     img.src=dataUrl;
@@ -1309,7 +1309,7 @@ function openPhotoEditor(k,yearId,eventId,photoId){
     const reader=new FileReader();
     reader.onload=async(evt)=>{
       // Resize and compress image before storing
-      const resizedData=await resizeImage(evt.target.result, 800, 600);
+      const resizedData=await resizeImage(evt.target.result, 250, 300, 0.55);
       photoObj.src=resizedData;
       previewImg.src=resizedData;
       fileInfo.textContent=`${file.name} · ${(file.size/1024).toFixed(1)} KB → resized`;
