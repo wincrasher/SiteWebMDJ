@@ -1030,8 +1030,10 @@ function openEditor(k,id){
         return;
       }
       const reader=new FileReader();
-      reader.onload=(evt)=>{
-        photoData=evt.target.result;
+      reader.onload=async(evt)=>{
+        // Resize and compress team member photo before storing
+        const originalData=evt.target.result;
+        photoData=await resizeImage(originalData, 250, 300, 0.55);
         previewImg.src=photoData;
         toggleZones();
         const photoSize=getDataUrlSize(photoData);
