@@ -9,7 +9,10 @@ const defaults = {
   events: [],
   team: [],
   partners: [],
-  photoYears: [],
+  photoYears: [
+    {id:2026,year:2026,cover:"assets/mission.jpeg",events:[]},
+    {id:2025,year:2025,cover:"assets/activites.jpeg",events:[]}
+  ],
   temoignages: [],
   ourStory: [],
   theme: 'aucun'
