@@ -98,6 +98,12 @@ async function save(k, v) {
   try {
     // Update in-memory cache immediately
     dataCache[k] = v;
+    
+    // Also update publicDataCache for immediate theme application
+    if(typeof publicDataCache !== 'undefined'){
+      publicDataCache[k] = v;
+    }
+    
     console.log(`💾 Saving ${k} to database...`, v);
     
     // Send to database (wait for response)
@@ -2005,9 +2011,26 @@ function saveProgramming(updates){
 }
 
 function saveTheme(newTheme){
-  save('theme',newTheme);
-  applyThemeColors();
-  renderPanel('theme');
+  console.log(`🎨 Applying theme: ${newTheme}`);
+  const success = save('theme', newTheme);
+  if(success !== false){
+    applyThemeColors();
+    renderPanel('theme');
+    const themeLabels={
+      aucun:'Aucun thème',
+      halloween:'🎃 Halloween',
+      noel:'🎄 Noël',
+      paque:'🐰 Pâques',
+      'st-valentin':'❤️ Saint-Valentin',
+      'saint-jean-baptiste':'🔥 Saint-Jean-Baptiste',
+      'fete-du-canada':'🇨🇦 Fête du Canada',
+      hiver:'❄️ Hiver',
+      ete:'☀️ Été',
+      printemps:'🌱 Printemps',
+      automne:'🍂 Automne'
+    };
+    console.log(`✅ Thème changé à: ${themeLabels[newTheme] || newTheme}`);
+  }
 }
 
 function handleCalendarUpload(event){
