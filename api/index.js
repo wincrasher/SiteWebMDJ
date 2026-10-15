@@ -381,6 +381,91 @@ app.get('/api/recovery-check', async (req, res) => {
   }
 });
 
+// BULK IMPORT - Restore multiple team members at once (admin recovery tool)
+app.post('/api/team/bulk-import', async (req, res) => {
+  try {
+    const { members } = req.body;
+    
+    if (!Array.isArray(members)) {
+      return res.status(400).json({ error: 'Expected array of team members' });
+    }
+    
+    console.log(`\n📥 BULK IMPORT: Processing ${members.length} team members...`);
+    
+    // Fetch current team
+    const result = await pool.query('SELECT value FROM site_data WHERE key = $1', ['squat_team']);
+    let arr = [];
+    
+    if (result.rows.length > 0) {
+      try {
+        const stored = result.rows[0].value;
+        if (typeof stored === 'string') {
+          arr = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse existing team, starting fresh');
+        arr = [];
+      }
+    }
+    
+    // Merge imported members with existing
+    let imported = 0;
+    let updated = 0;
+    
+    for (const member of members) {
+      // Validate required fields
+      if (!member.name || !member.role) {
+        console.warn(`⚠️ Skipping member missing name or role: ${JSON.stringify(member)}`);
+        continue;
+      }
+      
+      // Find if exists
+      const ix = arr.findIndex(m => m && m.id === member.id);
+      
+      if (ix >= 0) {
+        // Merge with existing
+        arr[ix] = { ...arr[ix], ...member };
+        console.log(`✏️ Updated: ${member.name} (id: ${member.id})`);
+        updated++;
+      } else {
+        // Add new
+        arr.push({
+          id: member.id || Date.now(),
+          name: member.name,
+          role: member.role,
+          gender: member.gender || 'Autre',
+          section: member.section || 'Équipe',
+          photo: member.photo || '',
+          facts: member.facts || []
+        });
+        console.log(`➕ Added: ${member.name} (id: ${member.id})`);
+        imported++;
+      }
+    }
+    
+    // Save updated array
+    const serialized = JSON.stringify(arr);
+    await pool.query(
+      'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+      ['squat_team', serialized]
+    );
+    
+    console.log(`✅ Bulk import complete: ${imported} added, ${updated} updated`);
+    
+    res.json({
+      success: true,
+      imported: imported,
+      updated: updated,
+      total: arr.length,
+      message: `Successfully imported ${imported} new members and updated ${updated}`
+    });
+  } catch (err) {
+    console.error('❌ Bulk import error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Health check - simple version first
 app.get('/api/health', (req, res) => {
   const urlSet = process.env.POSTGRES_URL ? 'SET ✅' : 'NOT SET ❌';
