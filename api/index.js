@@ -121,20 +121,33 @@ app.post('/api/:section', async (req, res) => {
     const { section } = req.params;
     let data = req.body;
     
+    console.log(`📥 POST /api/${section} received, type:`, typeof data, 'isArray:', Array.isArray(data));
+    
     // Special handling for team: if single object, upsert into array
     if (section === 'team' && data && !Array.isArray(data)) {
+      console.log('👤 Processing single team member:', data.name);
+      
       // Validate required fields for single member
       if (!data.name || !data.name.trim()) {
+        console.warn('❌ Validation failed: missing name');
         return res.status(400).json({ error: 'Le nom est obligatoire' });
       }
       if (!data.role || !data.role.trim()) {
+        console.warn('❌ Validation failed: missing role');
         return res.status(400).json({ error: 'Le rôle est obligatoire' });
       }
       if (!data.photo) {
+        console.warn('❌ Validation failed: missing photo');
         return res.status(400).json({ error: 'Une photo est obligatoire' });
       }
       
-      console.log(`📝 Upserting single team member: ${data.name}`);
+      // Validate photo is a string
+      if (typeof data.photo !== 'string') {
+        console.warn('❌ Validation failed: photo is not a string, type:', typeof data.photo);
+        return res.status(400).json({ error: 'Photo must be a base64 string' });
+      }
+      
+      console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
       
       // Fetch current team array
       const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
@@ -146,14 +159,23 @@ app.post('/api/:section', async (req, res) => {
       // Upsert: find and update, or add new
       const ix = arr.findIndex(m => m.id === data.id);
       if (ix >= 0) {
-        console.log(`✏️ Updating existing member: ${data.name}`);
+        console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
         arr[ix] = data;
       } else {
-        console.log(`✨ Adding new member: ${data.name}`);
+        console.log(`✨ Adding new member to array`);
         arr.push(data);
       }
       
       data = arr; // Set data to updated array for saving
+    }
+    
+    // Verify data is serializable before saving
+    try {
+      const testSerialize = JSON.stringify(data);
+      console.log(`✅ Data is valid JSON, size: ${testSerialize.length} bytes`);
+    } catch (serializeErr) {
+      console.error('❌ Data serialization failed:', serializeErr.message);
+      return res.status(400).json({ error: 'Data format is invalid: ' + serializeErr.message });
     }
     
     // Save the data
@@ -163,9 +185,10 @@ app.post('/api/:section', async (req, res) => {
     );
     
     console.log(`✅ POST /api/${section} saved successfully`);
-    res.json({ success: true, message: `${section} saved`, data: data });
+    res.json({ success: true, message: `${section} saved`, data: Array.isArray(data) ? data.length + ' items' : 'object' });
   } catch (err) {
     console.error(`❌ POST /api/${req.params.section} error:`, err.message);
+    console.error('Stack:', err.stack);
     res.status(500).json({ error: err.message });
   }
 });

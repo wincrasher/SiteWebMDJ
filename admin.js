@@ -1057,26 +1057,37 @@ function openEditor(k,id){
         alert('❌ Le nom est obligatoire');
         return;
       }
-      if(!obj.photo){
-        alert('❌ Une photo est obligatoire');
-        return;
-      }
       if(!obj.role||!obj.role.trim()){
         alert('❌ Le rôle est obligatoire');
         return;
       }
+      if(!obj.photo){
+        alert('❌ Une photo est obligatoire');
+        return;
+      }
+      
+      // Validate photo is a string (base64)
+      if(typeof obj.photo!=='string'){
+        alert('❌ Erreur: photo data is invalid');
+        console.error('Invalid photo data:', typeof obj.photo, obj.photo);
+        return;
+      }
       
       console.log('💾 Saving team member:', obj.name);
+      console.log('📸 Photo size:', obj.photo.length, 'bytes');
       
       // Send only the member object (not the entire array)
+      const payload=JSON.stringify(obj);
+      console.log('📤 Payload size:', payload.length, 'bytes');
+      
       const response=await fetch(`${API_URL}/team`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(obj)
+        body:payload
       });
       
       if(!response.ok){
-        const error=await response.json();
+        const error=await response.json().catch(()=>({error:'Unknown error'}));
         alert(`❌ ${error.error||'Erreur lors de la sauvegarde'}`);
         return;
       }
