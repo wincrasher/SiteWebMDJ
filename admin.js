@@ -1000,6 +1000,7 @@ function openEditor(k,id){
     const fileInput=document.getElementById('photo-input');
     const previewZone=document.getElementById('photo-preview-zone');
     const previewImg=document.getElementById('photo-preview-img');
+    const initialPhoto=obj.photo||''; // Track the INITIAL photo
     let photoData=obj.photo||'';
     
     const toggleZones=()=>{
@@ -1038,6 +1039,7 @@ function openEditor(k,id){
         toggleZones();
         const photoSize=getDataUrlSize(photoData);
         document.querySelector('#photo-storage-bar').innerHTML=renderStorageBar(photoSize,'Taille image',100);
+        console.log('✅ Photo compressed:', originalData.length, '→', photoData.length, 'bytes');
       };
       reader.readAsDataURL(file);
     }
@@ -1050,7 +1052,18 @@ function openEditor(k,id){
         if(k==='team'&&name==='facts')v=v.split('\n').map(x=>x.trim()).filter(Boolean);
         obj[name]=v
       });
-      if(photoData)obj.photo=photoData;
+      
+      // Only include photo if it was CHANGED (newly uploaded)
+      const photoChanged=photoData!==initialPhoto;
+      if(photoChanged){
+        obj.photo=photoData;
+        console.log('📷 Photo was changed, including in payload');
+      }else{
+        // Photo wasn't changed, omit it from payload
+        // Backend will preserve the existing photo
+        delete obj.photo;
+        console.log('📷 Photo unchanged, omitting from payload to save bandwidth');
+      }
       
       // Validate required fields for team members
       if(!obj.name||!obj.name.trim()){
@@ -1061,20 +1074,22 @@ function openEditor(k,id){
         alert('❌ Le rôle est obligatoire');
         return;
       }
-      if(!obj.photo){
+      // Photo is required ONLY when adding new member
+      const isNewMember=!id;
+      if(isNewMember&&!obj.photo){
         alert('❌ Une photo est obligatoire');
         return;
       }
       
-      // Validate photo is a string (base64)
-      if(typeof obj.photo!=='string'){
+      // Validate photo is a string if present
+      if(obj.photo&&typeof obj.photo!=='string'){
         alert('❌ Erreur: photo data is invalid');
         console.error('Invalid photo data:', typeof obj.photo, obj.photo);
         return;
       }
       
       console.log('💾 Saving team member:', obj.name);
-      console.log('📸 Photo size:', obj.photo.length, 'bytes');
+      if(obj.photo)console.log('📸 Photo size:', obj.photo.length, 'bytes');
       
       // Send only the member object (not the entire array)
       const payload=JSON.stringify(obj);

@@ -136,18 +136,26 @@ app.post('/api/:section', async (req, res) => {
         console.warn('❌ Validation failed: missing role');
         return res.status(400).json({ error: 'Le rôle est obligatoire' });
       }
-      if (!data.photo) {
-        console.warn('❌ Validation failed: missing photo');
-        return res.status(400).json({ error: 'Une photo est obligatoire' });
+      
+      // Photo is optional when EDITING (not included in payload)
+      // Photo is required when ADDING (no id means new member)
+      const isNewMember = !data.id || data.id < 1000; // Assume id like Date.now() for new
+      if (isNewMember && !data.photo) {
+        console.warn('❌ Validation failed: new member without photo');
+        return res.status(400).json({ error: 'Une photo est obligatoire pour un nouveau membre' });
       }
       
-      // Validate photo is a string
-      if (typeof data.photo !== 'string') {
+      // Validate photo is a string if present
+      if (data.photo && typeof data.photo !== 'string') {
         console.warn('❌ Validation failed: photo is not a string, type:', typeof data.photo);
         return res.status(400).json({ error: 'Photo must be a base64 string' });
       }
       
-      console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
+      if (data.photo) {
+        console.log(`📝 Team member ${data.name} - photo size: ${data.photo.length} bytes`);
+      } else {
+        console.log(`📝 Team member ${data.name} - no photo change (editing)`);
+      }
       
       // Fetch current team array
       const result = await pool.query('SELECT value FROM site_data WHERE key = $1', [`squat_${section}`]);
@@ -160,6 +168,11 @@ app.post('/api/:section', async (req, res) => {
       const ix = arr.findIndex(m => m.id === data.id);
       if (ix >= 0) {
         console.log(`✏️ Updating existing member (index ${ix}): ${data.name}`);
+        // If photo is not in payload, preserve the existing one
+        if (!data.photo) {
+          data.photo = arr[ix].photo;
+          console.log(`📸 Preserved existing photo (${arr[ix].photo.length} bytes)`);
+        }
         arr[ix] = data;
       } else {
         console.log(`✨ Adding new member to array`);
