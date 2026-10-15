@@ -372,7 +372,7 @@ function renderPhotos(){
   el.innerHTML=years.length?years.map(y=>`
     <figure style="cursor:pointer" onclick="location.href='photos-annee.html?year=${y.year}'">
       ${y.cover ? `<img src="${y.cover}" alt="Photos ${y.year}">` : `<div style="width:100%;aspect-ratio:16/9;background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:48px">📸</div>`}
-      <figcaption>📁 ${y.year} (${y.events.length} événement${y.events.length!==1?'s':''})</figcaption>
+      <figcaption>📁 ${y.year} (${ (y.events||[]).length} événement${(y.events||[]).length!==1?'s':''})</figcaption>
     </figure>
   `).join(''):`<div style="text-align:center;color:#657089;padding:40px">Aucune photo pour le moment.</div>`
 }

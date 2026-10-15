@@ -359,7 +359,7 @@ function renderPhotos(){
   el.innerHTML=years.map(y=>`
     <figure style="cursor:pointer" onclick="location.href='photos-annee.html?year=${y.year}'">
       <img src="${y.cover}" alt="Photos ${y.year}">
-      <figcaption>📁 ${y.year} (${y.events.length} événement${y.events.length!==1?'s':''})</figcaption>
+      <figcaption>📁 ${y.year} (${ (y.events||[]).length} événement${(y.events||[]).length!==1?'s':''})</figcaption>
     </figure>
   `).join('')
 }
