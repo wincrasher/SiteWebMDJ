@@ -812,6 +812,30 @@ function openEditor(k,id){
         }
         return `<label>${label}<select name="${name}"><option ${val==='Partenaire'?'selected':''}>Partenaire</option><option ${val==='Commanditaire'?'selected':''}>Commanditaire</option></select></label>`;
       }
+      if(type==='image'){
+        const hasImage=val&&val.length>0;
+        return `
+          <div style="border-top:1px solid #e8e8e8;padding-top:16px;margin-top:16px">
+            <label style="display:block;margin-bottom:8px"><strong>${label}</strong></label>
+            <div id="${name}-upload-zone" style="border:2px dashed #143a8f;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#f8faff;display:${hasImage?'none':'block'}">
+              <input type="file" id="${name}-input" accept="image/*" style="display:none">
+              <div style="font-size:28px;margin-bottom:6px">📸</div>
+              <small style="color:#143a8f;display:block;font-weight:600">Cliquez ou glissez</small>
+              <small style="color:#657089;display:block;margin-top:4px">JPG, PNG (max 2 MB)</small>
+            </div>
+            <div id="${name}-preview-zone" style="display:${hasImage?'block':'none'};margin-top:12px">
+              <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;height:150px">
+                <img id="${name}-preview-img" src="${val||''}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;padding:8px">
+                <button type="button" class="btn btn-outline btn-small" style="position:absolute;bottom:8px;right:8px;opacity:0.9" onclick="document.getElementById('${name}-input').click()">✎ Remplacer</button>
+              </div>
+              <div id="${name}-storage-bar" style="font-size:12px">
+                ${renderStorageBar(getDataUrlSize(val||''),'Taille image',100)}
+              </div>
+            </div>
+            <input type="hidden" name="${name}" id="${name}-data" value="${e(val)}">
+          </div>
+        `;
+      }
       const isRequired=!label.includes('(optionnel)');
       return `<label>${label}<input name="${name}" type="${type}" value="${e(val)}" ${isRequired?'required':''}></label>`
     }).join('');
@@ -879,6 +903,79 @@ function openEditor(k,id){
     </div>
   `;
   mb.classList.add('open');
+  
+  // Handle dynamic image field uploads (for partners, etc.)
+  D[k].fields.forEach(([name,label,type])=>{
+    if(type==='image'){
+      const uploadZone=document.getElementById(`${name}-upload-zone`);
+      const fileInput=document.getElementById(`${name}-input`);
+      const previewZone=document.getElementById(`${name}-preview-zone`);
+      const previewImg=document.getElementById(`${name}-preview-img`);
+      const dataField=document.getElementById(`${name}-data`);
+      let imageData=obj[name]||'';
+      
+      if(!uploadZone)return; // Skip if element doesn't exist
+      
+      const toggleZones=()=>{
+        uploadZone.style.display=imageData?'none':'block';
+        previewZone.style.display=imageData?'block':'none';
+      };
+      
+      uploadZone.onclick=()=>fileInput.click();
+      uploadZone.ondragover=(e)=>{e.preventDefault();uploadZone.style.background='#e0e7ff'};
+      uploadZone.ondragleave=(e)=>{e.preventDefault();uploadZone.style.background='#f8faff'};
+      uploadZone.ondrop=(e)=>{
+        e.preventDefault();
+        uploadZone.style.background='#f8faff';
+        if(e.dataTransfer.files.length)handleDynamicImageFile(e.dataTransfer.files[0]);
+      };
+      
+      fileInput.onchange=(e)=>{
+        if(e.target.files.length)handleDynamicImageFile(e.target.files[0]);
+      };
+      
+      function handleDynamicImageFile(file){
+        if(!file.type.startsWith('image/')){
+          alert('Veuillez sélectionner une image');
+          return;
+        }
+        if(file.size>2*1024*1024){
+          alert('L\'image doit faire moins de 2 MB');
+          return;
+        }
+        const reader=new FileReader();
+        reader.onload=async(evt)=>{
+          const originalData=evt.target.result;
+          imageData=await resizeImage(originalData);
+          previewImg.src=imageData;
+          dataField.value=imageData;
+          toggleZones();
+          const imgSize=getDataUrlSize(imageData);
+          document.querySelector(`#${name}-storage-bar`).innerHTML=renderStorageBar(imgSize,'Taille image',100);
+        };
+        reader.readAsDataURL(file);
+      }
+      
+      toggleZones();
+    }
+  });
+  
+  // Setup form submission to use hidden image data fields
+  const form=document.querySelector('#edit-form');
+  const formSubmit=form.onsubmit;
+  form.onsubmit=async(ev)=>{
+    // Update image fields from hidden inputs before submitting
+    D[k].fields.forEach(([name,type])=>{
+      if(type==='image'){
+        const dataField=document.getElementById(`${name}-data`);
+        if(dataField){
+          const val=dataField.value;
+          if(val)form[name].value=val;
+        }
+      }
+    });
+    return formSubmit?.call(form,ev);
+  };
   
   // Setup image upload for hero banner
   if(k==='heroBanner'){
