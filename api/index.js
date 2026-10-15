@@ -131,14 +131,16 @@ app.get('/api/db-stats', async (req, res) => {
     // Calculate metrics
     const limitBytes = 500 * 1024 * 1024; // 500 MB
     const usedMB = (usedBytes / 1024 / 1024).toFixed(2);
+    const usedKB = (usedBytes / 1024).toFixed(2);
     const percentageUsed = (usedBytes / limitBytes * 100).toFixed(2);
     
-    console.log(`📊 [DB-STATS] Calculated - MB: ${usedMB}, Percentage: ${percentageUsed}%`);
+    console.log(`📊 [DB-STATS] Calculated - MB: ${usedMB}, KB: ${usedKB}, Percentage: ${percentageUsed}%`);
     
     // Build response object
     const statsResponse = {};
     statsResponse.used_bytes = parseInt(usedBytes, 10);
     statsResponse.used_mb = String(usedMB);
+    statsResponse.used_kb = String(usedKB);
     statsResponse.limit_mb = 500;
     statsResponse.percentage_used = String(percentageUsed);
     statsResponse.row_count = result.rows.length;

@@ -278,16 +278,19 @@ function showDatabaseStats(){
     }
     
     const MB = parseFloat(stats.used_mb);
+    const KB = parseFloat(stats.used_kb);
     const percent = parseFloat(stats.percentage_used);
     const limit = parseInt(stats.limit_mb) || 500;
     
-    console.log('📊 Parsed values - MB:', MB, 'percent:', percent, 'limit:', limit);
+    console.log('📊 Parsed values - MB:', MB, 'KB:', KB, 'percent:', percent, 'limit:', limit);
     
     if (isNaN(MB) || isNaN(percent)) {
       console.error('⚠️ Invalid DB stats - NaN detected in showDatabaseStats');
       return;
     }
     
+    // Display in KB if less than 1 MB, otherwise in MB
+    const displaySize = MB < 1 ? `${KB} KB` : `${MB} MB`;
     const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
     
     const statsHTML = `
@@ -296,7 +299,7 @@ function showDatabaseStats(){
         <div style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
             <span style="font-size:12px;color:#657089">Utilisation</span>
-            <strong style="font-size:12px;color:#0c255f">${MB} MB / ${limit} MB</strong>
+            <strong style="font-size:12px;color:#0c255f">${displaySize} / ${limit} MB</strong>
           </div>
           <div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
             <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
@@ -2045,10 +2048,11 @@ async function updateStorageIndicator(){
     }
     
     const used = parseFloat(stats.used_mb);
+    const usedKB = parseFloat(stats.used_kb);
     const limit = parseInt(stats.limit_mb) || 500;
     const percent = parseFloat(stats.percentage_used);
     
-    console.log('📊 Parsed values - used:', used, 'limit:', limit, 'percent:', percent);
+    console.log('📊 Parsed values - used:', used, 'MB, usedKB:', usedKB, 'limit:', limit, 'percent:', percent);
     
     if (isNaN(used)) {
       console.error('❌ used_mb cannot be parsed as number:', stats.used_mb, 'TYPE:', typeof stats.used_mb);
@@ -2062,12 +2066,14 @@ async function updateStorageIndicator(){
       return;
     }
     
+    // Display in KB if less than 1 MB, otherwise in MB
+    const displaySize = used < 1 ? `${usedKB} KB` : `${used} MB`;
     const color = percent > 75 ? '#ef4444' : (percent > 50 ? '#f59e0b' : '#10b981');
     
-    console.log('✅ Rendering with - used:', used, 'limit:', limit, 'percent:', percent, 'color:', color);
+    console.log('✅ Rendering with - displaySize:', displaySize, 'limit:', limit, 'percent:', percent, 'color:', color);
     
     indicator.innerHTML = `
-      <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 BD: ${used} MB / ${limit} MB (${percent}%)</div>
+      <div style="font-size:12px;font-weight:600;color:#0c255f;margin-bottom:4px">💾 BD: ${displaySize} / ${limit} MB (${percent}%)</div>
       <div style="width:100%;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
         <div style="width:${percent}%;height:100%;background:${color};transition:all 0.3s ease"></div>
       </div>
