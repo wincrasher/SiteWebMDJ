@@ -596,38 +596,60 @@ app.get('/api/db-stats', async (req, res) => {
     // Get all data from site_data table
     const result = await pool.query('SELECT key, value FROM site_data WHERE key LIKE $1', ['squat_%']);
     
+    if (!result || !result.rows || !Array.isArray(result.rows)) {
+      console.error('❌ Invalid query result:', result);
+      return res.status(500).json({ error: 'Invalid database response' });
+    }
+    
     console.log(`📊 DB Stats - Found ${result.rows.length} squat_* keys`);
     
     // Calculate total size
     let totalBytes = 0;
     result.rows.forEach(row => {
-      const size = JSON.stringify(row.value).length; // Size in bytes
-      totalBytes += size;
-      console.log(`  📝 ${row.key}: ${size} bytes`);
+      try {
+        const strValue = JSON.stringify(row.value);
+        const size = strValue ? strValue.length : 0;
+        totalBytes += size;
+        console.log(`  📝 ${row.key}: ${size} bytes`);
+      } catch (e) {
+        console.error(`  ⚠️ Could not stringify ${row.key}:`, e.message);
+      }
     });
     
     console.log(`📊 Total size: ${totalBytes} bytes = ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
     
     // Supabase free plan = 500MB
     const limitBytes = 500 * 1024 * 1024; // 500 MB
+    const usedMB = (totalBytes / 1024 / 1024).toFixed(2);
     const percentageUsed = (totalBytes / limitBytes * 100).toFixed(2);
+    
+    // Validate calculations
+    if (!usedMB || usedMB === 'NaN' || isNaN(parseFloat(usedMB))) {
+      console.error('❌ Invalid MB calculation:', totalBytes, usedMB);
+      return res.status(500).json({ error: 'Invalid statistics calculation' });
+    }
+    
+    if (!percentageUsed || percentageUsed === 'NaN' || isNaN(parseFloat(percentageUsed))) {
+      console.error('❌ Invalid percentage calculation:', totalBytes, percentageUsed);
+      return res.status(500).json({ error: 'Invalid percentage calculation' });
+    }
     
     const response = {
       used_bytes: totalBytes,
-      used_mb: (totalBytes / 1024 / 1024).toFixed(2),
+      used_mb: usedMB,
       limit_mb: 500,
       percentage_used: percentageUsed,
       row_count: result.rows.length,
       rows: result.rows.map(r => ({
         key: r.key,
-        size_kb: (JSON.stringify(r.value).length / 1024).toFixed(2)
+        size_kb: (JSON.stringify(r.value) ? JSON.stringify(r.value).length / 1024 : 0).toFixed(2)
       }))
     };
     
     console.log('✅ Sending response:', response);
     res.json(response);
   } catch (err) {
-    console.error('❌ DB stats error:', err.message);
+    console.error('❌ DB stats error:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
