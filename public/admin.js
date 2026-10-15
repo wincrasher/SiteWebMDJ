@@ -98,8 +98,9 @@ async function save(k, v) {
   try {
     // Update in-memory cache immediately
     dataCache[k] = v;
+    console.log(`💾 Saving ${k} to database...`, v);
     
-    // Send to database (non-blocking)
+    // Send to database (wait for response)
     const response = await fetch(`${API_URL}/${k}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -107,12 +108,16 @@ async function save(k, v) {
     });
     
     if (response.ok) {
-      console.log(`✅ ${k} saved to database`);
+      console.log(`✅ ${k} successfully saved to database`);
+      return true;
     } else {
-      console.warn(`⚠️ Database save failed for ${k}: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Database save failed for ${k}: ${response.status} - ${errorText}`);
+      return false;
     }
   } catch (err) {
     console.error(`❌ Error saving ${k}:`, err.message);
+    return false;
   }
 }
 
@@ -291,8 +296,10 @@ function renderPanel(k){
   // Get data from in-memory cache (loaded at startup)
   let data = load(k);
   
+  console.log(`📋 Rendering panel: ${k}, data =`, data);
+  
   // Ensure data is correct type
-  if (!Array.isArray(data)) {
+  if (!Array.isArray(data) && k !== 'programmation' && k !== 'theme') {
     console.warn(`⚠️ renderPanel: ${k} data is not an array, fixing...`);
     data = [];
   }
@@ -328,6 +335,7 @@ function renderPanelContent(k, p, data){
   
   if(k==='programmation'){
     const prog=data||{facebookLink:'',calendarImage:''};
+    console.log('🔧 Programming panel - prog data:', prog);
     p.innerHTML=`
       <div class="admin-top">
         <div>
@@ -356,7 +364,7 @@ function renderPanelContent(k, p, data){
               <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('calendar-input').click()">
                 ${prog.calendarImage?'✎ Remplacer':'📤 Uploader'}
               </button>
-              ${prog.calendarImage?`<button class="btn btn-danger" onclick="saveProgramming({calendarImage:''});renderPanel('programmation')">🗑 Supprimer</button>`:''}
+              ${prog.calendarImage?`<button class="btn btn-danger" onclick="saveProgramming({calendarImage:''})">🗑 Supprimer</button>`:''}
             </div>
             <input type="file" id="calendar-input" accept="image/*" style="display:none" onchange="handleCalendarUpload(event)">
           </div>
@@ -1822,8 +1830,28 @@ function resetDemo(){
 function saveProgramming(updates){
   const prog=load('programmation')||{facebookLink:'',calendarImage:''};
   Object.assign(prog,updates);
-  save('programmation',prog);
-  renderPanel('programmation');
+  
+  console.log('💾 Saving programmation:', prog);
+  return save('programmation',prog).then(success => {
+    if (success) {
+      // Update cache and re-render
+      dataCache.programmation = prog;
+      renderPanel('programmation');
+      
+      // Show success message
+      const msg = document.querySelector('.save-message') || document.createElement('div');
+      msg.className = 'save-message';
+      msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:6px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+      msg.textContent = '✅ Programmation sauvegardée!';
+      if (!msg.parentNode) document.body.appendChild(msg);
+      
+      setTimeout(() => msg.remove(), 3000);
+      return true;
+    } else {
+      alert('❌ Erreur lors de la sauvegarde. Vérifiez la console (F12) pour plus d\'informations.');
+      return false;
+    }
+  });
 }
 
 function saveTheme(newTheme){
@@ -1836,15 +1864,29 @@ function handleCalendarUpload(event){
   const file=event.target.files[0];
   if(!file)return;
   
+  console.log('📤 Calendar upload started:', file.name, file.size, 'bytes');
+  
   if(file.size>2*1024*1024){
     alert('❌ Fichier trop volumineux (max 2 MB)');
+    console.error('File too large');
     return;
   }
   
   const reader=new FileReader();
   reader.onload=(e)=>{
+    console.log('📖 File read complete, resizing image...');
     resizeImage(e.target.result,800,600).then(resized=>{
-      saveProgramming({calendarImage:resized});
+      console.log('🖼️ Image resized, saving to database...');
+      saveProgramming({calendarImage:resized}).then(() => {
+        console.log('✅ Calendar image saved and rendered');
+        // Clear the input for next upload
+        event.target.value = '';
+      }).catch(err => {
+        console.error('❌ Error saving calendar image:', err);
+      });
+    }).catch(err => {
+      console.error('❌ Error resizing image:', err);
+      alert('❌ Erreur lors du redimensionnement de l\'image');
     });
   };
   reader.readAsDataURL(file);
