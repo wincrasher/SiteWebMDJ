@@ -338,7 +338,10 @@ function renderPanelContent(k, p, data){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
         <div style="border:1px solid #d4d4d4;border-radius:8px;padding:20px">
           <h3 style="margin:0 0 12px;color:#0c255f">📘 Lien Facebook</h3>
-          <input type="url" placeholder="https://www.facebook.com/..." value="${e(prog.facebookLink||'')}" onchange="saveProgramming({facebookLink:this.value})" style="width:100%;padding:8px 12px;border:1px solid #d4d4d4;border-radius:4px;font-size:14px">
+          <div style="display:flex;gap:8px">
+            <input type="url" id="fb-link-input" placeholder="https://www.facebook.com/..." value="${e(prog.facebookLink||'')}" style="flex:1;padding:8px 12px;border:1px solid #d4d4d4;border-radius:4px;font-size:14px">
+            <button class="btn btn-primary" onclick="saveProgramming({facebookLink:document.getElementById('fb-link-input').value})">💾 Enregistrer</button>  
+          </div>
           <small style="color:#657089;display:block;margin-top:8px">Lien vers la page Facebook du Squat</small>
         </div>
         <div style="border:1px solid #d4d4d4;border-radius:8px;padding:20px">
@@ -353,7 +356,7 @@ function renderPanelContent(k, p, data){
               <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('calendar-input').click()">
                 ${prog.calendarImage?'✎ Remplacer':'📤 Uploader'}
               </button>
-              ${prog.calendarImage?`<button class="btn btn-danger" onclick="saveProgramming({calendarImage:''})">🗑 Supprimer</button>`:''}
+              ${prog.calendarImage?`<button class="btn btn-danger" onclick="saveProgramming({calendarImage:''});renderPanel('programmation')">🗑 Supprimer</button>`:''}
             </div>
             <input type="file" id="calendar-input" accept="image/*" style="display:none" onchange="handleCalendarUpload(event)">
           </div>
