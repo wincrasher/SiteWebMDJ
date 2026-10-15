@@ -303,6 +303,34 @@ app.post('/api/:section', async (req, res) => {
           }
         }
       }
+      
+      // Validate and sanitize data for testimonials specifically
+      if (section === 'temoignages' && Array.isArray(data)) {
+        console.log(`\n🧹 Sanitizing testimonials data...`);
+        data = data.map((item, idx) => {
+          if (!item || typeof item !== 'object') {
+            console.warn(`   Item ${idx}: Invalid type, skipping`);
+            return null;
+          }
+          
+          // Ensure required fields exist and are strings
+          const cleaned = {
+            id: item.id || Date.now() + idx,
+            message: String(item.message || '').trim(),
+            author: String(item.author || '').trim()
+          };
+          
+          // Log any changes
+          if (cleaned.message !== item.message || cleaned.author !== item.author) {
+            console.log(`   Item ${idx}: Sanitized - message: "${cleaned.message.slice(0, 40)}...", author: "${cleaned.author}"`);
+          }
+          
+          return cleaned;
+        }).filter(item => item !== null);
+        
+        console.log(`   ✅ Sanitized ${data.length} testimonials`);
+        serialized = JSON.stringify(data);
+      }
     } catch (serializeErr) {
       console.error('❌ Data serialization failed:', serializeErr.message);
       console.error('Data type:', typeof data, 'Is array:', Array.isArray(data));
@@ -316,20 +344,32 @@ app.post('/api/:section', async (req, res) => {
     // ✅ FIX: Send object directly to JSONB column, NOT stringified
     // PostgreSQL driver will handle JSON conversion automatically
     console.log(`\n💾 Saving to database...`);
+    console.log(`   Section: ${section}`);
+    console.log(`   Data type: ${typeof data}, Is array: ${Array.isArray(data)}`);
+    if (Array.isArray(data)) {
+      console.log(`   Array length: ${data.length}`);
+    }
+    
     try {
-      await pool.query(
+      const queryResult = await pool.query(
         'INSERT INTO site_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
         [`squat_${section}`, data]  // Send object directly, not serialized string
       );
+      console.log(`✅ Database save successful. Rows affected: ${queryResult.rowCount}`);
     } catch (dbErr) {
+      console.error(`\n❌ Database save failed for ${section}`);
+      console.error('PostgreSQL Error Code:', dbErr.code || 'unknown');
+      console.error('Error Type:', dbErr.name || 'unknown');
+      console.error('Error message:', dbErr.message);
+      if (dbErr.detail) console.error('Detail:', dbErr.detail);
+      if (dbErr.hint) console.error('Hint:', dbErr.hint);
+      if (dbErr.position) console.error('Position:', dbErr.position);
+      
+      // Log the data that was being saved for diagnosis
       if (section === 'temoignages') {
-        console.error(`\n❌ Database save failed for ${section}`);
-        console.error('Error type:', dbErr.code || dbErr.name);
-        console.error('Error message:', dbErr.message);
-        if (dbErr.detail) console.error('Detail:', dbErr.detail);
-        if (dbErr.hint) console.error('Hint:', dbErr.hint);
-        console.error('Data being saved:', JSON.stringify(data));
+        console.error('Data being saved:', JSON.stringify(data, null, 2));
       }
+      
       throw dbErr;
     }
     
