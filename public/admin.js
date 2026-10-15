@@ -414,6 +414,9 @@ function renderPanelContent(k, p, data){
               <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#f0f0f0">
                 <img src="${prog.calendarImage}" alt="Calendrier" style="max-width:100%;max-height:300px;width:100%;object-fit:contain;border-radius:8px;display:block">
               </div>
+              <div style="font-size:12px;margin-bottom:12px">
+                ${renderStorageBar(getDataUrlSize(prog.calendarImage||''),'Taille image',100)}
+              </div>
             `:''}
             <div style="display:flex;gap:8px">
               <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('calendar-input').click()">
