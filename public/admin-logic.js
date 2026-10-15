@@ -498,7 +498,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Then render all sections
   try {
-    renderNews();
     renderEvents();
     renderTeam();
     renderPartners();
